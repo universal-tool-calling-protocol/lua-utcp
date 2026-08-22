@@ -1,0 +1,15 @@
+package.path = './lua/?.lua;./lua/?/init.lua;'..package.path
+local utcp = require('utcp')
+local client = utcp.new({})
+local provider = {name='example', transport='http', url='http://127.0.0.1:8080'}
+client:add_provider(provider)
+client:add_manual({tools={{name='echo',description='Echo',inputs={type='object'},tool_call_template={call_template_type='http',url='http://127.0.0.1:8080/echo',http_method='POST'}}}}, provider)
+local tool, p = client:find_tool('echo')
+assert(tool and tool.name == 'echo')
+assert(p == provider)
+local qualified, qualified_provider = client:find_tool('example.echo')
+assert(qualified and qualified.name == 'echo')
+assert(qualified_provider == provider)
+local missing, err = client:find_tool('missing')
+assert(missing == nil and type(err) == 'string')
+print('lua-utcp client lookup tests: ok')

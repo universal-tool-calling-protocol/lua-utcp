@@ -1,0 +1,82 @@
+LUA ?= lua
+LUA_PATH := ./lua/?.lua;./lua/?/init.lua;;
+export LUA_PATH
+
+.PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
+ example-http example-sse example-streamable example-tcp example-udp \
+ example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode
+
+test:
+	$(LUA) tests/test_core.lua
+	$(LUA) tests/test_codemode.lua
+	$(LUA) tests/test_provider_json.lua
+	$(LUA) tests/test_client_lookup.lua
+	$(LUA) tests/test_mcp.lua
+
+examples-local:
+	$(LUA) examples/manual.lua
+	$(LUA) examples/text.lua
+	$(LUA) examples/cli.lua
+	$(LUA) examples/codemode.lua
+
+examples:
+	python3 examples/run_examples.py $(LUA)
+
+example-http:
+	$(LUA) examples/http.lua
+example-sse:
+	$(LUA) examples/sse.lua
+example-streamable:
+	$(LUA) examples/streamable_http.lua
+example-tcp:
+	$(LUA) examples/tcp.lua
+example-udp:
+	$(LUA) examples/udp.lua
+example-graphql:
+	$(LUA) examples/graphql.lua
+example-mcp:
+	$(LUA) examples/mcp.lua
+example-cli:
+	$(LUA) examples/cli.lua
+example-text:
+	$(LUA) examples/text.lua
+example-codemode:
+	$(LUA) examples/codemode.lua
+example-provider-flow:
+	$(LUA) examples/provider_flow.lua
+example-provider-codemode:
+	$(LUA) examples/provider_codemode.lua
+
+integration:
+	$(LUA) tests/test_http.lua
+
+check: test
+
+zip:
+	zip -qr lua-utcp.zip lua lua-utcp-1.0-1.rockspec README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
+
+example-provider-test:
+	$(LUA) tests/test_provider_json.lua
+	$(LUA) tests/test_mcp.lua
+
+example-codemode-test:
+	$(LUA) tests/test_codemode.lua
+	$(LUA) tests/test_provider_json.lua
+	$(LUA) tests/test_mcp.lua
+
+servers:
+	python3 examples/servers/run.py all
+server-http:
+	python3 examples/servers/run.py http
+server-sse:
+	python3 examples/servers/run.py sse
+server-streamable:
+	python3 examples/servers/run.py streamable
+server-tcp:
+	python3 examples/servers/run.py tcp
+server-udp:
+	python3 examples/servers/run.py udp
+server-graphql:
+	python3 examples/servers/run.py graphql
+server-mcp:
+	python3 examples/servers/run.py mcp

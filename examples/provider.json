@@ -1,0 +1,47 @@
+{
+  "name": "calculator",
+  "call_template_type": "http",
+  "url": "http://127.0.0.1:8080",
+  "manual": {
+    "manual_version": "1.0",
+    "utcp_version": "1.0",
+    "tools": [
+      {
+        "name": "add",
+        "description": "Add two numbers",
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "a": { "type": "number" },
+            "b": { "type": "number" }
+          },
+          "required": ["a", "b"]
+        },
+        "tool_call_template": {
+          "call_template_type": "http",
+          "url": "http://127.0.0.1:8080/add",
+          "http_method": "POST",
+          "body_fields": { "a": "{a}", "b": "{b}" }
+        }
+      },
+      {
+        "name": "multiply",
+        "description": "Multiply two numbers",
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "a": { "type": "number" },
+            "b": { "type": "number" }
+          },
+          "required": ["a", "b"]
+        },
+        "tool_call_template": {
+          "call_template_type": "http",
+          "url": "http://127.0.0.1:8080/multiply",
+          "http_method": "POST",
+          "body_fields": { "a": "{a}", "b": "{b}" }
+        }
+      }
+    ]
+  }
+}
