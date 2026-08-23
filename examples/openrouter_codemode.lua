@@ -33,7 +33,7 @@ local tools = assert(codemode:list_tools())
 local tool_catalog = {}
 for _, tool in ipairs(tools) do
   tool_catalog[#tool_catalog + 1] = {
-    name = tool.name,
+    name = provider.name .. '.' .. tool.name,
     description = tool.description,
     inputs = tool.inputs or tool.input_schema,
   }
@@ -49,7 +49,7 @@ Generate ONLY executable Lua source code. Do not use markdown fences.
 You have exactly one tool API:
   codemode.call_tool(name, args)
 
-Use the canonical tool names listed below. Do not invent tools.
+Use the canonical qualified tool names listed below. Do not invent tools.
 Return a Lua program that calculates (10 + 20) * 3 and returns:
   { sum = ..., product = ... }
 
