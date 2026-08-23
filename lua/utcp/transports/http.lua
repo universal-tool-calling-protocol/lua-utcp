@@ -2,40 +2,95 @@ local json = require('utcp.json')
 local template = require('utcp.template')
 local auth = require('utcp.auth')
 local M = {}; local T = {}; T.__index = T
+
 local function socket_http()
-  local ok, http = pcall(require, 'socket.http'); if not ok then return nil, 'lua-socket is required' end
-  local ok2, ltn12 = pcall(require, 'ltn12'); if not ok2 then return nil, 'ltn12 is required' end
+  local ok, http = pcall(require, 'socket.http')
+  if not ok then return nil, 'lua-socket is required' end
+  local ok2, ltn12 = pcall(require, 'ltn12')
+  if not ok2 then return nil, 'ltn12 is required' end
   return http, ltn12
 end
-function T.new(cfg) return setmetatable(cfg or {}, T) end
-function T:request(method, url, body, headers)
-  local http,ltn12 = socket_http(); if not http then return nil,ltn12 end
-  headers = auth.apply(headers or {}, self.auth)
-  local sink = {}; local payload = body
-  if type(body) == 'table' then payload = json.encode(body); headers['content-type'] = headers['content-type'] or 'application/json' end
-  if payload then headers['content-length'] = tostring(#payload) end
-  local ok, code, response_headers, status = http.request{url=url, method=method, headers=headers, source=payload and ltn12.source.string(payload) or nil, sink=ltn12.sink.table(sink)}
-  local text = table.concat(sink)
-  if not ok then return nil, tostring(code), response_headers end
-  if tonumber(code) >= 400 then return nil, 'HTTP '..tostring(code)..' '..(status or ''), response_headers, text end
-  local decoded = json.decode(text); return decoded or text, nil, response_headers
+
+function T.new(cfg)
+  return setmetatable(cfg or {}, T)
 end
+
+function T:request(method, url, body, headers)
+  local http, ltn12 = socket_http()
+  if not http then return nil, ltn12 end
+
+  headers = auth.apply(headers or {}, self.auth)
+  local sink = {}
+  local payload = body
+
+  if type(body) == 'table' then
+    payload = json.encode(body)
+    headers['content-type'] = headers['content-type'] or 'application/json'
+  end
+
+  if payload then
+    headers['content-length'] = tostring(#payload)
+  end
+
+  local ok, code, response_headers, status = http.request{
+    url = url,
+    method = method,
+    headers = headers,
+    source = payload and ltn12.source.string(payload) or nil,
+    sink = ltn12.sink.table(sink),
+  }
+
+  local text = table.concat(sink)
+  if not ok then
+    return nil, tostring(code), response_headers
+  end
+
+  if tonumber(code) >= 400 then
+    return nil, 'HTTP '..tostring(code)..' '..(status or ''), response_headers, text
+  end
+
+  local decoded = json.decode(text)
+  return decoded or text, nil, response_headers
+end
+
 function T:call(template_cfg, args)
   local url = template.render(template_cfg.url or self.url, args)
   local method = (template_cfg.http_method or template_cfg.method or self.method or 'POST'):upper()
-  local headers = {}; for k,v in pairs(template_cfg.headers or self.headers or {}) do headers[k]=template.render(v,args) end
+
+  local headers = {}
+  for k, v in pairs(template_cfg.headers or self.headers or {}) do
+    headers[k] = template.render(v, args)
+  end
+
   local body = template_cfg.body
-  if body == nil and method ~= 'GET' and method ~= 'HEAD' then body = template_cfg.body_fields or args end
-  if type(body) == 'string' then body = template.render(body,args) end
+  if body == nil and method ~= 'GET' and method ~= 'HEAD' then
+    body = template_cfg.body_fields or args
+  end
+
+  -- Request bodies are structured data. Preserve numbers and booleans when
+  -- body_fields contain exact placeholders such as "{a}" instead of
+  -- serializing them as JSON strings.
+  body = template.render_value(body, args)
+
   if method == 'GET' or method == 'DELETE' then
     local q = template_cfg.query_params or template_cfg.query
     if q then
-      local parts={}; for k,v in pairs(q) do parts[#parts+1]=k..'='..template.render(v,args) end
-      if #parts>0 then url=url..(url:find('%?') and '&' or '?')..table.concat(parts,'&') end
+      local parts = {}
+      for k, v in pairs(q) do
+        parts[#parts + 1] = k..'='..template.render(v, args)
+      end
+      if #parts > 0 then
+        url = url..(url:find('%?') and '&' or '?')..table.concat(parts, '&')
+      end
     end
   end
-  return self:request(method,url,body,headers)
+
+  return self:request(method, url, body, headers)
 end
-function M.new(cfg) return T.new(cfg) end
-M.Transport=T
+
+function M.new(cfg)
+  return T.new(cfg)
+end
+
+M.Transport = T
 return M
