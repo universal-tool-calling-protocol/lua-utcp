@@ -29,7 +29,7 @@ local router = OpenRouter.new(assert(os.getenv('OPENROUTER_API_KEY'),
   'OPENROUTER_API_KEY is required'))
 
 local chat = router:new_chat_session({
-  model = os.getenv('OPENROUTER_MODEL') or 'openai/gpt-5.4',
+  model = os.getenv('OPENROUTER_MODEL') or 'inclusionai/ling-3.0-flash',
   temperature = 0,
   messages = {
     {

@@ -73,7 +73,7 @@ local status, response = openrouter:create_chat_completion({
   },
   { role = 'user', content = prompt }
 }, {
-  model = os.getenv('OPENROUTER_MODEL') or 'openai/gpt-5.4',
+  model = os.getenv('OPENROUTER_MODEL') or 'inclusionai/ling-3.0-flash',
   temperature = 0,
 })
 
