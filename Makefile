@@ -13,6 +13,7 @@ test:
 	$(LUA) tests/test_provider_json.lua
 	$(LUA) tests/test_client_lookup.lua
 	$(LUA) tests/test_mcp.lua
+	$(LUA) tests/test_template.lua
 
 examples-local:
 	$(LUA) examples/manual.lua
