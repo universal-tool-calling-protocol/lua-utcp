@@ -21,6 +21,7 @@ for _, tool in ipairs(codemode:list_tools()) do
     name = provider.name .. '.' .. tool.name,
     description = tool.description,
     inputs = tool.inputs or tool.input_schema,
+    outputs = tool.outputs or tool.output_schema,
   }
 end
 
@@ -38,6 +39,13 @@ You are a Lua UTCP CodeMode planner.
 For every request, answer with ONLY a Lua program.
 The program may call only codemode.call_tool(name, args).
 Never invent tool names or call HTTP directly.
+
+Calculator tools return an object with a numeric `result` field.
+When passing a calculator result to another tool, use `.result`.
+For example:
+  local r = codemode.call_tool("calculator.add", {a=7, b=8})
+  local sum = r.result
+
 Available tools:
 ]] .. utcp.json.encode(catalog),
     }
@@ -46,8 +54,10 @@ Available tools:
 
 local source = chat:send([[Create a Lua program that:
 1. calls calculator.add with 7 and 8;
-2. passes that result to calculator.multiply with 4;
-3. returns {sum = ..., product = ...}.]])
+2. extracts the numeric `.result` from that response;
+3. passes that number to calculator.multiply with 4;
+4. extracts the numeric `.result` from that response;
+5. returns {sum = 15, product = 60}.]])
 
 assert(type(source) == 'string', 'OpenRouter did not return Lua source')
 source = source:gsub('^%s*```lua%s*', ''):gsub('^%s*```%s*', ''):gsub('%s*```%s*$', '')
