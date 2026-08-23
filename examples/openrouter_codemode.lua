@@ -36,6 +36,7 @@ for _, tool in ipairs(tools) do
     name = provider.name .. '.' .. tool.name,
     description = tool.description,
     inputs = tool.inputs or tool.input_schema,
+    outputs = tool.outputs or tool.output_schema,
   }
 end
 
@@ -50,8 +51,17 @@ You have exactly one tool API:
   codemode.call_tool(name, args)
 
 Use the canonical qualified tool names listed below. Do not invent tools.
-Return a Lua program that calculates (10 + 20) * 3 and returns:
-  { sum = ..., product = ... }
+
+The calculator tools return objects with a numeric `result` field.
+Therefore, when using a calculator result as an input to another tool,
+use `.result`, for example:
+  local add_result = codemode.call_tool("calculator.add", {a=10, b=20})
+  local sum = add_result.result
+
+Return a Lua program that:
+1. calls calculator.add with 10 and 20;
+2. passes the numeric `.result` to calculator.multiply with 3;
+3. returns { sum = 30, product = 90 }.
 
 Available UTCP tools:
 ]] .. utcp.json.encode(tool_catalog)
@@ -59,7 +69,7 @@ Available UTCP tools:
 local status, response = openrouter:create_chat_completion({
   {
     role = 'system',
-    content = 'Generate small, deterministic Lua CodeMode programs for UTCP.'
+    content = 'Generate small, deterministic Lua CodeMode programs for UTCP. Use tool output schemas exactly.'
   },
   { role = 'user', content = prompt }
 }, {
