@@ -4,7 +4,8 @@ export LUA_PATH
 
 .PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
  example-http example-sse example-streamable example-tcp example-udp \
- example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode
+ example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode \
+ example-openrouter-codemode example-openrouter-codemode-chat
 
 test:
 	$(LUA) tests/test_core.lua
@@ -12,6 +13,7 @@ test:
 	$(LUA) tests/test_provider_json.lua
 	$(LUA) tests/test_client_lookup.lua
 	$(LUA) tests/test_mcp.lua
+	$(LUA) tests/test_template.lua
 
 examples-local:
 	$(LUA) examples/manual.lua
@@ -46,6 +48,10 @@ example-provider-flow:
 	$(LUA) examples/provider_flow.lua
 example-provider-codemode:
 	$(LUA) examples/provider_codemode.lua
+example-openrouter-codemode:
+	$(LUA) examples/openrouter_codemode.lua
+example-openrouter-codemode-chat:
+	$(LUA) examples/openrouter_codemode_chat.lua
 
 integration:
 	$(LUA) tests/test_http.lua

@@ -17,6 +17,13 @@
           },
           "required": ["a", "b"]
         },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "result": { "type": "number" }
+          },
+          "required": ["result"]
+        },
         "tool_call_template": {
           "call_template_type": "http",
           "url": "http://127.0.0.1:8080/add",
@@ -34,6 +41,13 @@
             "b": { "type": "number" }
           },
           "required": ["a", "b"]
+        },
+        "outputs": {
+          "type": "object",
+          "properties": {
+            "result": { "type": "number" }
+          },
+          "required": ["result"]
         },
         "tool_call_template": {
           "call_template_type": "http",

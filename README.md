@@ -96,6 +96,56 @@ local tools = utcp.codemode.new(client)
 local result = tools.call("echo", { message = "hello" })
 ```
 
+## OpenRouter + CodeMode
+
+`lua-openai` provides an OpenRouter compatibility client for OpenAI-compatible chat completions. OpenRouter uses the OpenAI-compatible base URL `https://openrouter.ai/api/v1`, so the model can be selected with an OpenRouter model slug.
+
+Install the optional dependency:
+
+```sh
+luarocks install lua-openai
+export OPENROUTER_API_KEY=sk-or-...
+```
+
+Start the local calculator server used by the examples:
+
+```sh
+make server-http
+```
+
+Then run the LLM-generated CodeMode example:
+
+```sh
+make example-openrouter-codemode
+```
+
+Or use `lua-openai`'s chat-session API:
+
+```sh
+make example-openrouter-codemode-chat
+```
+
+The important architecture is:
+
+```text
+OpenRouter / lua-openai
+        |
+        | generates Lua source
+        v
+UTCP CodeMode sandbox
+        |
+        | codemode.call_tool(name, args)
+        v
+canonical UTCP registry
+        |
+        v
+native transport -> tool server
+```
+
+The model is given the discovered UTCP tool catalog and is instructed to emit only Lua CodeMode. The generated program cannot access the UTCP client or transport objects directly; it can invoke registered tools through `codemode.call_tool(...)`. This keeps tool names canonical and prevents the model from inventing transport calls.
+
+See `examples/openrouter_codemode.lua` and `examples/openrouter_codemode_chat.lua` for complete examples.
+
 ## Design
 
 - `utcp.client` — discovery, canonical registry and tool invocation.
