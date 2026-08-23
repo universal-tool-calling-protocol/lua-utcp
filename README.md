@@ -98,7 +98,7 @@ local result = tools.call("echo", { message = "hello" })
 
 ## OpenRouter + CodeMode
 
-`lua-openai` provides an OpenRouter compatibility client for OpenAI-compatible chat completions. OpenRouter uses the OpenAI-compatible base URL `https://openrouter.ai/api/v1`, so the model can be selected with an OpenRouter model slug. citeturn0search0turn0search1
+`lua-openai` provides an OpenRouter compatibility client for OpenAI-compatible chat completions. OpenRouter uses the OpenAI-compatible base URL `https://openrouter.ai/api/v1`, so the model can be selected with an OpenRouter model slug.
 
 Install the optional dependency:
 
