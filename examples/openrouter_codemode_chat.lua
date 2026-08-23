@@ -18,7 +18,7 @@ local codemode = utcp.codemode.new(client)
 local catalog = {}
 for _, tool in ipairs(codemode:list_tools()) do
   catalog[#catalog + 1] = {
-    name = tool.name,
+    name = provider.name .. '.' .. tool.name,
     description = tool.description,
     inputs = tool.inputs or tool.input_schema,
   }
