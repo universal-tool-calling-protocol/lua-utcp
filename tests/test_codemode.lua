@@ -36,7 +36,7 @@ local result, err = codemode:call_tool_chain([[
 assert(result, err and err.error)
 assert(result.result == 90)
 assert(result.logs[1] == 'workflow complete\t90')
-assert(result.interfaces[1] == 'add')
+assert(result.interfaces[1] == 'calculator.add')
 
 local iface = codemode:get_tool_interface('calculator.add')
 assert(iface.name == 'calculator.add')
