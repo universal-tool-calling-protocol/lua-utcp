@@ -38,11 +38,11 @@ assert(result.result == 90)
 assert(result.logs[1] == 'workflow complete\t90')
 assert(result.interfaces[1] == 'calculator.add')
 
-local iface = codemode:get_tool_interface('calculator.add')
+local iface = codemode.get_tool_interface('calculator.add')
 assert(iface.name == 'calculator.add')
 assert(iface.description == 'Add two numbers')
 
-local unknown, unknown_err = codemode:call_tool('calculator.does_not_exist', {})
+local unknown, unknown_err = codemode.call_tool('calculator.does_not_exist', {})
 assert(unknown == nil)
 assert(unknown_err ~= nil)
 
