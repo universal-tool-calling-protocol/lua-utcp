@@ -132,6 +132,34 @@ local function build_environment(client, opts, logs)
   return env, interfaces
 end
 
+local function error_message(err)
+  if type(err) == 'table' and err.message ~= nil then
+    return tostring(err.message)
+  end
+  return tostring(err)
+end
+
+local function structured_error(stage, err, logs, interfaces)
+  local message = error_message(err)
+  local kind = stage == 'compile' and 'syntax_error' or 'runtime_error'
+  local retryable = true
+
+  if message == 'CodeMode instruction limit exceeded' then
+    kind = 'instruction_limit'
+    retryable = false
+  end
+
+  return {
+    stage = stage,
+    type = kind,
+    message = message,
+    error = message,
+    retryable = retryable,
+    logs = logs,
+    interfaces = interfaces,
+  }
+end
+
 function M.new(client, opts)
   assert(client, 'CodeMode requires a UTCP client')
   opts = opts or {}
@@ -172,7 +200,7 @@ function M.new(client, opts)
     local env, interfaces = build_environment(client, opts, logs)
     local chunk, compile_err = load(source, 'utcp-codemode', 't', env)
     if not chunk then
-      return nil, { stage = 'compile', error = compile_err, logs = logs, interfaces = interfaces }
+      return nil, structured_error('compile', compile_err, logs, interfaces)
     end
 
     local instruction_limit = exec_opts.instruction_limit or opts.instruction_limit
@@ -190,7 +218,7 @@ function M.new(client, opts)
     if hook_installed then debug.sethook() end
 
     if not ok then
-      return nil, { stage = 'execute', error = result, logs = logs, interfaces = interfaces }
+      return nil, structured_error('execute', result, logs, interfaces)
     end
 
     return { result = result, logs = logs, interfaces = interfaces }
