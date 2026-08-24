@@ -44,26 +44,76 @@ local openrouter = OpenRouter.new(assert(os.getenv('OPENROUTER_API_KEY'),
   'OPENROUTER_API_KEY is required'))
 
 local prompt = [[
-You are the CodeMode planner for a Lua UTCP agent.
+You are a Lua CodeMode planner for a UTCP agent.
 
-Generate ONLY executable Lua source code. Do not use markdown fences.
-You have exactly one tool API:
+Your task is to generate a SMALL, DETERMINISTIC Lua program that will be
+executed directly by the UTCP CodeMode runtime.
+
+IMPORTANT OUTPUT RULES:
+- Return ONLY valid executable Lua source code.
+- Do NOT use Markdown.
+- Do NOT use ``` fences.
+- Do NOT explain your answer.
+- Do NOT print anything.
+- Do NOT define functions unless absolutely necessary.
+- Do NOT invent tools, APIs, variables, or fields.
+- Do NOT call tools through any API other than codemode.call_tool.
+- Use ONLY the canonical tool names from the tool catalog below.
+- Arguments MUST match the tool input schema exactly.
+- Use the actual result returned by a tool as input to subsequent tools.
+
+AVAILABLE API:
+
   codemode.call_tool(name, args)
 
-Use the canonical qualified tool names listed below. Do not invent tools.
+The function returns the tool result directly.
 
-The calculator tools return objects with a numeric `result` field.
-Therefore, when using a calculator result as an input to another tool,
-use `.result`, for example:
-  local add_result = codemode.call_tool("calculator.add", {a=10, b=20})
-  local sum = add_result.result
+TASK:
 
-Return a Lua program that:
-1. calls calculator.add with 10 and 20;
-2. passes the numeric `.result` to calculator.multiply with 3;
-3. returns { sum = 30, product = 90 }.
+1. Call `calculator.add` with:
+   {
+     a = 10,
+     b = 20
+   }
 
-Available UTCP tools:
+2. Read the numeric value from the returned `.result` field.
+
+3. Call `calculator.multiply` with:
+   {
+     a = <the numeric result from calculator.add>,
+     b = 3
+   }
+
+4. Return exactly:
+   {
+     sum = 30,
+     product = 90
+   }
+
+The second tool call MUST use the result of the first tool call.
+Do NOT hardcode 30 as the input to `calculator.multiply`.
+
+Example of the required execution pattern:
+
+  local sum_result = codemode.call_tool("calculator.add", {
+    a = 10,
+    b = 20
+  })
+
+  local product_result = codemode.call_tool("calculator.multiply", {
+    a = sum_result.result,
+    b = 3
+  })
+
+  return {
+    sum = sum_result.result,
+    product = product_result.result
+  }
+
+Do not copy the example blindly if the actual tool schemas below require
+different argument names. The tool catalog is authoritative.
+
+AVAILABLE UTCP TOOLS:
 ]] .. utcp.json.encode(tool_catalog)
 
 local status, response = openrouter:create_chat_completion({
