@@ -11,6 +11,11 @@ local function socket_http()
   return http, ltn12
 end
 
+local function normalize_error(err)
+  err = tostring(err)
+  return err:gsub('^.-:%d+: ', '')
+end
+
 function T.new(cfg)
   return setmetatable(cfg or {}, T)
 end
@@ -48,7 +53,7 @@ function T:request(method, url, body, headers)
   http.TIMEOUT = previous_timeout
 
   if not request_ok then
-    return nil, tostring(ok), response_headers
+    return nil, normalize_error(ok), response_headers
   end
 
   local text = table.concat(sink)
@@ -56,7 +61,7 @@ function T:request(method, url, body, headers)
     return nil, tostring(code), response_headers
   end
 
-  if tonumber(code) and tonumber(code) >= 400 then
+  if tonumber(code) >= 400 then
     return nil, 'HTTP '..tostring(code)..' '..(status or ''), response_headers, text
   end
 
