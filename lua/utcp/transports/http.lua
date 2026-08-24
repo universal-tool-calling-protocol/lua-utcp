@@ -32,25 +32,36 @@ function T:request(method, url, body, headers)
     headers['content-length'] = tostring(#payload)
   end
 
-  local ok, code, response_headers, status = http.request{
+  local previous_timeout = http.TIMEOUT
+  if self.timeout ~= nil then
+    http.TIMEOUT = self.timeout
+  end
+
+  local request_ok, ok, code, response_headers, status = pcall(http.request, {
     url = url,
     method = method,
     headers = headers,
     source = payload and ltn12.source.string(payload) or nil,
     sink = ltn12.sink.table(sink),
-  }
+  })
+
+  http.TIMEOUT = previous_timeout
+
+  if not request_ok then
+    return nil, tostring(ok), response_headers
+  end
 
   local text = table.concat(sink)
   if not ok then
     return nil, tostring(code), response_headers
   end
 
-  if tonumber(code) >= 400 then
+  if tonumber(code) and tonumber(code) >= 400 then
     return nil, 'HTTP '..tostring(code)..' '..(status or ''), response_headers, text
   end
 
   local decoded = json.decode(text)
-  return decoded or text, nil, response_headers
+  return decoded or text, nil, response_headers, text
 end
 
 function T:call(template_cfg, args)
@@ -67,9 +78,6 @@ function T:call(template_cfg, args)
     body = template_cfg.body_fields or args
   end
 
-  -- Request bodies are structured data. Preserve numbers and booleans when
-  -- body_fields contain exact placeholders such as "{a}" instead of
-  -- serializing them as JSON strings.
   body = template.render_value(body, args)
 
   if method == 'GET' or method == 'DELETE' then
