@@ -15,8 +15,9 @@ local client = utcp.Client.new({
 })
 
 function client:call_tool(name, args)
-  if name == 'add' then return (args.a or 0) + (args.b or 0) end
-  if name == 'mul' then return (args.a or 0) * (args.b or 0) end
+  local tool_name = name:match('^calculator%.(.+)$') or name
+  if tool_name == 'add' then return (args.a or 0) + (args.b or 0) end
+  if tool_name == 'mul' then return (args.a or 0) * (args.b or 0) end
   return nil, 'unknown test tool: '..name
 end
 
@@ -76,7 +77,7 @@ assert(old == nil)
 assert(old_err.stage == 'execute')
 
 -- The sandbox must not expose the underlying UTCP client.
-local exposed, exposed_err = codemode:call_tool_chain([[return client]])
+local exposed, exposed_err = codemode:call_tool_chain([[return client.call_tool('calculator.add', {a = 1, b = 2})]])
 assert(exposed == nil)
 assert(exposed_err.stage == 'execute')
 
