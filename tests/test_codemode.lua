@@ -48,10 +48,27 @@ assert(unknown_err ~= nil)
 local bad, bad_err = codemode:call_tool_chain([[return codemode.call_tool('add', 'not-a-table')]])
 assert(bad == nil)
 assert(bad_err.stage == 'execute')
+assert(bad_err.type == 'runtime_error')
+assert(bad_err.retryable == true)
+assert(type(bad_err.message) == 'string')
+assert(type(bad_err.error) == 'string')
 
 local compile, compile_err = codemode:call_tool_chain('this is not valid lua')
 assert(compile == nil)
 assert(compile_err.stage == 'compile')
+assert(compile_err.type == 'syntax_error')
+assert(compile_err.retryable == true)
+assert(type(compile_err.message) == 'string')
+assert(type(compile_err.error) == 'string')
+
+local limited, limited_err = codemode:call_tool_chain([[
+  local i = 0
+  while true do i = i + 1 end
+]], { instruction_limit = 1000 })
+assert(limited == nil)
+assert(limited_err.stage == 'execute')
+assert(limited_err.type == 'instruction_limit')
+assert(limited_err.retryable == false)
 
 -- Old namespace-based execution must no longer be available.
 local old, old_err = codemode:call_tool_chain([[return calculator.add({a = 1, b = 2})]])
