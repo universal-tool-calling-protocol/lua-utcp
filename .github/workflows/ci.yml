@@ -28,8 +28,14 @@ jobs:
 
       - name: Install dependencies
         run: |
-          luarocks install luasec
+          luarocks install lua-cjson
           luarocks install dkjson
+          luarocks install luasec
+
+      - name: Verify JSON dependencies
+        run: |
+          lua -e "assert(require('dkjson'))"
+          lua -e "assert(require('cjson.safe'))"
 
       - name: Run tests
         run: make test
