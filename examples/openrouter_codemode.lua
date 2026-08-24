@@ -73,7 +73,7 @@ local status, response = openrouter:create_chat_completion({
   },
   { role = 'user', content = prompt }
 }, {
-  model = os.getenv('OPENROUTER_MODEL') or 'inclusionai/ling-3.0-flash',
+  model = os.getenv('OPENROUTER_MODEL') or 'nvidia/nemotron-3.5-lightning:free',
   temperature = 0,
 })
 
