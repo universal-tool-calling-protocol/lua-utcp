@@ -752,28 +752,28 @@ Use ONLY the canonical tools and schemas supplied by the user.
 
 Never hallucinate tools, arguments, or result fields.
 
+The filesystem operations are exposed through a single canonical
+UTCP tool named "filesystem". The specific operation is selected
+via a nested "tool" field (e.g. "filesystem.read", "filesystem.patch").
+
+Example:
+
+  codemode.call_tool("filesystem", {
+    tool = "filesystem.read",
+    inputs = { path = "README.md" }
+  })
+
 The generated program must:
 
-1. call the canonical filesystem.read tool;
-2. use its actual result;
-3. call the canonical filesystem.write tool;
-4. terminate.
+1. call the canonical "filesystem" tool with tool = "filesystem.read";
+2. use its actual result (read_result.data);
+3. derive a unified diff from that actual content;
+4. call the canonical "filesystem" tool with tool = "filesystem.patch";
+5. terminate.
 
-Never use a filesystem wrapper.
-
-Never use:
-
-  codemode.call_tool("filesystem", ...)
-
-Never use:
-
-  tool = "read"
-
-Never use:
-
-  tool = "write"
-
-Use the exact canonical tool names from the catalog.
+Never call "filesystem.read" or "filesystem.write" or "filesystem.patch"
+directly as the first argument to codemode.call_tool — always use
+"filesystem" as the tool name with the operation nested inside "inputs".
 ]]
   },
   {
@@ -782,7 +782,7 @@ Use the exact canonical tool names from the catalog.
   }
 }, {
   model = os.getenv('OPENROUTER_MODEL')
-    or 'nvidia/nemotron-3.5-lightning:free',
+    or 'stealth/ox-alpha',
 
   temperature = 0,
 })

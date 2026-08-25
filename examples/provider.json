@@ -8,21 +8,32 @@
     "tools": [
       {
         "name": "add",
-        "description": "Add two numbers",
+        "description": "Add two numbers.",
         "inputs": {
           "type": "object",
           "properties": {
-            "a": { "type": "number" },
-            "b": { "type": "number" }
+            "a": {
+              "type": "number"
+            },
+            "b": {
+              "type": "number"
+            }
           },
-          "required": ["a", "b"]
+          "required": [
+            "a",
+            "b"
+          ]
         },
         "outputs": {
           "type": "object",
           "properties": {
-            "result": { "type": "number" }
+            "result": {
+              "type": "number"
+            }
           },
-          "required": ["result"]
+          "required": [
+            "result"
+          ]
         },
         "tool_call_template": {
           "call_template_type": "http",
@@ -36,21 +47,32 @@
       },
       {
         "name": "multiply",
-        "description": "Multiply two numbers",
+        "description": "Multiply two numbers.",
         "inputs": {
           "type": "object",
           "properties": {
-            "a": { "type": "number" },
-            "b": { "type": "number" }
+            "a": {
+              "type": "number"
+            },
+            "b": {
+              "type": "number"
+            }
           },
-          "required": ["a", "b"]
+          "required": [
+            "a",
+            "b"
+          ]
         },
         "outputs": {
           "type": "object",
           "properties": {
-            "result": { "type": "number" }
+            "result": {
+              "type": "number"
+            }
           },
-          "required": ["result"]
+          "required": [
+            "result"
+          ]
         },
         "tool_call_template": {
           "call_template_type": "http",
@@ -64,16 +86,19 @@
       },
       {
         "name": "filesystem.read",
-        "description": "Read a file from the workspace using go-harness-filesystem.",
+        "description": "Read an existing file from the workspace without modifying it.",
         "inputs": {
           "type": "object",
           "properties": {
             "path": {
               "type": "string",
-              "description": "Path of the file to read."
+              "description": "Existing file path relative to the workspace root."
             }
           },
-          "required": ["path"]
+          "required": [
+            "path"
+          ],
+          "additionalProperties": false
         },
         "outputs": {
           "type": "object"
@@ -90,20 +115,24 @@
       },
       {
         "name": "filesystem.write",
-        "description": "Write content to a file in the workspace using go-harness-filesystem.",
+        "description": "Create a new file in the workspace. Do not use this tool to modify an existing file.",
         "inputs": {
           "type": "object",
           "properties": {
             "path": {
               "type": "string",
-              "description": "Path of the file to write."
+              "description": "Path for the new file relative to the workspace root."
             },
             "content": {
               "type": "string",
-              "description": "Complete file content."
+              "description": "Complete initial content of the new file."
             }
           },
-          "required": ["path", "content"]
+          "required": [
+            "path",
+            "content"
+          ],
+          "additionalProperties": false
         },
         "outputs": {
           "type": "object"

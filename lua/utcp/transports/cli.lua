@@ -9,76 +9,65 @@ function T.new(cfg)
 end
 
 local function shellquote(value)
-  return "'" .. tostring(value):gsub("'", "'\\''") .. "'"
+  value = tostring(value)
+  return "'" .. value:gsub("'", "'\\''") .. "'"
 end
 
-local function json_or_string(value)
+local function encode_arg(value)
   if type(value) == 'table' then
-    local encoded, err = json.encode(value)
-    assert(encoded, err)
-    return encoded
-  end
-
-  if value == nil then
-    return ''
+    return json.encode(value)
+  elseif type(value) == 'boolean' then
+    return value and 'true' or 'false'
   end
 
   return tostring(value)
 end
 
-local function lookup(args, key)
-  local value = args and args[key]
-  if value ~= nil then
-    return value
-  end
+local function expand_command(command, args)
+  return command:gsub(
+    'UTCP_ARG_([A-Za-z_][A-Za-z0-9_]*)_UTCP_END',
+    function(name)
+      local value = args and args[name]
 
-  local current = args
-  for part in key:gmatch('[^%.]+') do
-    if type(current) ~= 'table' then
-      return nil
+      assert(
+        value ~= nil,
+        'missing CLI argument: ' .. name
+      )
+
+      return shellquote(encode_arg(value))
     end
-    current = current[part]
-  end
-
-  return current
+  )
 end
 
--- CLI manuals use UTCP_ARG_<name>_UTCP_END placeholders inside command
--- strings. Replace each placeholder with a shell-quoted argument. Tables are
--- JSON encoded so nested UTCP inputs can be passed safely to a CLI process.
-local function render_command(command, args)
-  return (command:gsub('UTCP_ARG_([%w_%.%-]+)_UTCP_END', function(key)
-    local value = lookup(args, key)
-    assert(value ~= nil, 'missing CLI argument: ' .. key)
-    return shellquote(json_or_string(value))
-  end))
-end
-
-local function command_from_template(template, config)
-  if template.command then
-    return template.command
+local function get_command(t, self)
+  -- Direct command.
+  if t and t.command then
+    return t.command
   end
 
-  if template.commands then
-    assert(#template.commands > 0, 'cli commands cannot be empty')
-    local command = template.commands[1]
-    if type(command) == 'table' then
-      return command.command or command.cmd
+  if self.command then
+    return self.command
+  end
+
+  -- UTCP CLI template:
+  --
+  -- tool_call_template = {
+  --   commands = {
+  --     {
+  --       command = "..."
+  --     }
+  --   }
+  -- }
+  local commands = t and t.commands
+
+  if type(commands) == 'table' and commands[1] then
+    if type(commands[1]) == 'string' then
+      return commands[1]
     end
-    return command
-  end
 
-  if config.command then
-    return config.command
-  end
-
-  if config.commands then
-    assert(#config.commands > 0, 'cli commands cannot be empty')
-    local command = config.commands[1]
-    if type(command) == 'table' then
-      return command.command or command.cmd
+    if type(commands[1]) == 'table' then
+      return commands[1].command
     end
-    return command
   end
 
   return nil
@@ -88,46 +77,86 @@ function T:call(t, args)
   t = t or {}
   args = args or {}
 
-  local cmd = command_from_template(t, self)
-  assert(cmd, 'cli command is required')
+  local command = get_command(t, self)
 
-  local rendered = render_command(cmd, args)
-  local parts = {}
-
-  if t.working_dir or self.working_dir then
-    parts[#parts + 1] = 'cd'
-    parts[#parts + 1] = shellquote(t.working_dir or self.working_dir)
-    parts[#parts + 1] = '&&'
-  end
-
-  parts[#parts + 1] = rendered
-
-  for _, value in ipairs(t.args or self.args or {}) do
-    parts[#parts + 1] = shellquote(
-      type(value) == 'string' and value or json_or_string(value)
-    )
-  end
-
-  if t.pass_args or self.pass_args then
-    for key, value in pairs(args) do
-      parts[#parts + 1] = shellquote('--' .. key)
-      parts[#parts + 1] = shellquote(json_or_string(value))
-    end
-  end
-
-  local process = assert(
-    io.popen(table.concat(parts, ' ') .. ' 2>&1', 'r')
+  assert(
+    command,
+    'cli command is required'
   )
 
-  local output = process:read('*a')
-  local _, _, code = process:close()
+  --
+  -- UTCP placeholder mode.
+  --
+  -- Example:
+  --
+  -- go-harness-filesystem --root .
+  --   UTCP_ARG_tool_UTCP_END
+  --   UTCP_ARG_inputs_UTCP_END
+  --
+  if command:find('UTCP_ARG_') then
+    command = expand_command(command, args)
+  else
+    --
+    -- Traditional CLI argument mode.
+    --
+    local parts = { command }
 
-  if code and code ~= 0 then
+    for _, value in ipairs(t.args or self.args or {}) do
+      parts[#parts + 1] = shellquote(
+        encode_arg(value)
+      )
+    end
+
+    if t.pass_args or self.pass_args then
+      for key, value in pairs(args) do
+        parts[#parts + 1] = shellquote('--' .. key)
+        parts[#parts + 1] = shellquote(
+          encode_arg(value)
+        )
+      end
+    end
+
+    command = table.concat(parts, ' ')
+  end
+
+  --
+  -- Optional working directory.
+  --
+  local working_dir =
+    t.working_dir
+    or self.working_dir
+
+  if working_dir and working_dir ~= '' then
+    command =
+      'cd '
+      .. shellquote(working_dir)
+      .. ' && '
+      .. command
+  end
+
+  command = command .. ' 2>&1'
+
+  local pipe, pipe_err = io.popen(command, 'r')
+
+  if not pipe then
+    return nil, pipe_err or 'failed to start CLI command'
+  end
+
+  local output = pipe:read('*a')
+
+  local ok, reason, code = pipe:close()
+
+  if not ok or (code and code ~= 0) then
     return nil, output
   end
 
   local decoded = json.decode(output)
-  return decoded or output
+
+  if decoded ~= nil then
+    return decoded
+  end
+
+  return output
 end
 
 function M.new(cfg)
