@@ -63,21 +63,17 @@
         }
       },
       {
-        "name": "filesystem",
-        "description": "Inspect and modify files in the workspace using go-harness-filesystem.",
+        "name": "filesystem.read",
+        "description": "Read a file from the workspace using go-harness-filesystem.",
         "inputs": {
           "type": "object",
           "properties": {
-            "tool": {
+            "path": {
               "type": "string",
-              "description": "Filesystem tool name, for example read, write, list, or search."
-            },
-            "inputs": {
-              "type": "object",
-              "description": "Arguments for the filesystem tool."
+              "description": "Path of the file to read."
             }
           },
-          "required": ["tool", "inputs"]
+          "required": ["path"]
         },
         "outputs": {
           "type": "object"
@@ -86,7 +82,37 @@
           "call_template_type": "cli",
           "commands": [
             {
-              "command": "go-harness-filesystem --root . UTCP_ARG_tool_UTCP_END UTCP_ARG_inputs_UTCP_END"
+              "command": "go-harness-filesystem --root . read UTCP_ARG_path_UTCP_END"
+            }
+          ],
+          "working_dir": "."
+        }
+      },
+      {
+        "name": "filesystem.write",
+        "description": "Write content to a file in the workspace using go-harness-filesystem.",
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "path": {
+              "type": "string",
+              "description": "Path of the file to write."
+            },
+            "content": {
+              "type": "string",
+              "description": "Complete file content."
+            }
+          },
+          "required": ["path", "content"]
+        },
+        "outputs": {
+          "type": "object"
+        },
+        "tool_call_template": {
+          "call_template_type": "cli",
+          "commands": [
+            {
+              "command": "go-harness-filesystem --root . write UTCP_ARG_path_UTCP_END UTCP_ARG_content_UTCP_END"
             }
           ],
           "working_dir": "."

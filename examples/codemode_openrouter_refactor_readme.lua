@@ -85,21 +85,34 @@ print('-----------------------')
 -- Find the canonical filesystem wrapper.
 --
 
-local filesystem_tool
+--
+-- Discover the canonical filesystem tools.
+--
+
+local filesystem_read_tool
+local filesystem_write_tool
 
 for _, tool in ipairs(tool_catalog) do
-  if tool.name == 'filesystem' then
-    filesystem_tool = tool
-    break
+  if tool.name == 'filesystem.read' then
+    filesystem_read_tool = tool
+  elseif tool.name == 'filesystem.write' then
+    filesystem_write_tool = tool
   end
 end
 
 assert(
-  filesystem_tool,
-  'canonical filesystem tool was not discovered'
+  filesystem_read_tool,
+  'canonical filesystem.read tool was not discovered'
 )
 
-print('filesystem wrapper: ' .. filesystem_tool.name)
+assert(
+  filesystem_write_tool,
+  'canonical filesystem.write tool was not discovered'
+)
+
+print('filesystem read tool: ' .. filesystem_read_tool.name)
+print('filesystem write tool: ' .. filesystem_write_tool.name)
+
 
 --
 -- OpenRouter.
@@ -141,12 +154,12 @@ IMPORTANT OUTPUT RULES:
 - Do NOT invent tools.
 - Do NOT invent tool arguments.
 - Do NOT invent result fields.
-- Use ONLY canonical UTCP tool names from the supplied catalog.
+- Use ONLY canonical tool names from the supplied UTCP tool catalog.
 - Call tools ONLY through codemode.call_tool(name, args).
 - Arguments MUST match the supplied input schemas exactly.
 - Use actual tool results as inputs to subsequent calls.
 - Never substitute a different tool because it sounds similar.
-- The supplied tool catalog is authoritative.
+- The tool catalog is authoritative.
 
 AVAILABLE API:
 
@@ -154,63 +167,29 @@ AVAILABLE API:
 
 The function returns the tool result directly.
 
-IMPORTANT:
-
-The canonical UTCP tool named "filesystem" is a wrapper around
-go-harness-filesystem.
-
-"filesystem" is the ONLY UTCP tool name that may be used for
-filesystem operations.
-
-DO NOT call:
-
-  codemode.call_tool("filesystem.read", ...)
-  codemode.call_tool("filesystem.write", ...)
-  codemode.call_tool("filesystem.list", ...)
-
-Those are NOT canonical UTCP tool names.
-
-Instead, call the canonical wrapper:
-
-  codemode.call_tool("filesystem", {
-    tool = "<ACTUAL CLI TOOL NAME>",
-    inputs = {
-      ...
-    }
-  })
-
-The value of "tool" MUST be an actual tool name supported by the
-filesystem CLI.
-
-Do NOT guess this value.
-
-Use the canonical filesystem tool schema and tool catalog supplied
-below to determine the correct operation and its arguments.
-
 TASK:
 
 Refactor README.md.
 
 The workflow MUST be:
 
-1. Read README.md using the canonical filesystem tool.
+1. Call the canonical filesystem.read tool to read README.md.
 
-2. The read operation MUST happen before any write operation.
+2. Use the ACTUAL README content returned by filesystem.read.
 
-3. Use the ACTUAL README content returned by the read operation as
-   the source material for the refactoring.
+3. Generate an improved README while preserving the existing
+   project-specific content.
 
-4. Generate an improved README while preserving useful,
-   project-specific existing content.
+4. Call the canonical filesystem.write tool to write the improved
+   README back to README.md.
 
-5. Write the improved README back to README.md using the canonical
-   filesystem tool.
+5. Do NOT modify any other file.
 
-6. Do NOT modify any other file.
+6. Do NOT use shell.
 
-7. Do NOT commit anything.
+7. Do NOT use git.
 
-8. Do NOT use shell.
+8. Do NOT commit anything.
 
 9. Return:
 
@@ -219,47 +198,20 @@ The workflow MUST be:
      write = <actual write result>
    }
 
-README REFACTORING RULES:
+IMPORTANT DATA FLOW:
 
-- Preserve project-specific information.
-- Do not replace README.md with a generic template.
-- Improve structure and organization.
-- Improve clarity and readability.
-- Improve examples only when supported by the original README.
-- Correct obvious inconsistencies only when supported by the original
-  README.
-- Do NOT invent project features.
-- Do NOT invent APIs.
-- Do NOT invent commands.
-- Do NOT invent installation instructions.
-- Do NOT invent configuration.
-- Do NOT invent tool names.
-- Do NOT invent tool arguments.
-- Do NOT invent output fields.
-
-CRITICAL DATA-FLOW REQUIREMENT:
-
-The write operation MUST depend on the actual read result.
-
-The program MUST:
-
-1. call the canonical filesystem read tool;
-2. inspect the returned README content;
-3. construct the improved README from that content;
-4. call the canonical filesystem write tool;
-5. return both results.
+The write content MUST be derived from the actual read result.
 
 Do NOT hard-code a replacement README.
 
-Do NOT write a generic README.
+Do NOT generate a generic README.
 
-Do NOT write before reading.
+Do NOT call filesystem.write before filesystem.read.
 
-Do NOT call unnecessary tools.
+Do NOT invent information that is not present in the README or
+canonical tool catalog.
 
-The generated program MUST terminate after the read/write workflow.
-
-CANONICAL UTCP TOOL CATALOG:
+CANONICAL UTCP TOOLS:
 
 ]] .. utcp.json.encode(tool_catalog)
 
@@ -392,35 +344,6 @@ end
 -- If the CLI exposes the operation names through the filesystem
 -- wrapper schema, inspect that schema instead.
 --
-
-local filesystem_inputs = filesystem_tool.inputs
-
-if type(filesystem_inputs) == 'table'
-  and type(filesystem_inputs.properties) == 'table'
-then
-  local tool_property = filesystem_inputs.properties.tool
-
-  if type(tool_property) == 'table' then
-    local enum = tool_property.enum
-
-    if type(enum) == 'table' then
-      for _, value in ipairs(enum) do
-        if type(value) == 'string' then
-          if value == 'read' or value:match('%.read$') then
-            read_operation = value
-          end
-
-          if value == 'write' or value:match('%.write$') then
-            write_operation = value
-          end
-        end
-      end
-    end
-  end
-end
-
-print('filesystem read operation: ' .. tostring(read_operation))
-print('filesystem write operation: ' .. tostring(write_operation))
 
 
 local execution, exec_err = codemode:call_tool_chain(
