@@ -28,7 +28,10 @@
           "call_template_type": "http",
           "url": "http://127.0.0.1:8080/add",
           "http_method": "POST",
-          "body_fields": { "a": "{a}", "b": "{b}" }
+          "body_fields": {
+            "a": "{a}",
+            "b": "{b}"
+          }
         }
       },
       {
@@ -53,7 +56,40 @@
           "call_template_type": "http",
           "url": "http://127.0.0.1:8080/multiply",
           "http_method": "POST",
-          "body_fields": { "a": "{a}", "b": "{b}" }
+          "body_fields": {
+            "a": "{a}",
+            "b": "{b}"
+          }
+        }
+      },
+      {
+        "name": "filesystem",
+        "description": "Inspect and modify files in the workspace using go-harness-filesystem.",
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "tool": {
+              "type": "string",
+              "description": "Filesystem tool name, for example read, write, list, or search."
+            },
+            "inputs": {
+              "type": "object",
+              "description": "Arguments for the filesystem tool."
+            }
+          },
+          "required": ["tool", "inputs"]
+        },
+        "outputs": {
+          "type": "object"
+        },
+        "tool_call_template": {
+          "call_template_type": "cli",
+          "commands": [
+            {
+              "command": "go-harness-filesystem --root . UTCP_ARG_tool_UTCP_END UTCP_ARG_inputs_UTCP_END"
+            }
+          ],
+          "working_dir": "."
         }
       }
     ]

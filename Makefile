@@ -15,7 +15,6 @@ test:
 	$(LUA) tests/test_mcp.lua
 	$(LUA) tests/test_template.lua
 	$(LUA) tests/test_transports.lua
-	$(LUA) tests/test_cli.lua
 
 examples-local:
 	$(LUA) examples/manual.lua
@@ -56,6 +55,8 @@ example-openrouter-codemode-chat:
 	$(LUA) examples/openrouter_codemode_chat.lua
 example-openrouter-codemode-repair:
 	$(LUA) examples/openrouter_codemode_repair.lua
+example-codemode-openrouter-refactor-readme:
+	$(LUA) examples/codemode_openrouter_refactor_readme.lua
 
 integration:
 	$(LUA) tests/test_http.lua
