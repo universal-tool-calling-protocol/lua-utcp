@@ -40,7 +40,6 @@ local function expand_command(command, args)
 end
 
 local function get_command(t, self)
-  -- Direct command.
   if t and t.command then
     return t.command
   end
@@ -49,15 +48,6 @@ local function get_command(t, self)
     return self.command
   end
 
-  -- UTCP CLI template:
-  --
-  -- tool_call_template = {
-  --   commands = {
-  --     {
-  --       command = "..."
-  --     }
-  --   }
-  -- }
   local commands = t and t.commands
 
   if type(commands) == 'table' and commands[1] then
@@ -73,6 +63,18 @@ local function get_command(t, self)
   return nil
 end
 
+local function decode_output(output)
+  -- CLI tools may return JSON or plain text. Do not let a JSON parser
+  -- exception turn a valid text result into a transport failure.
+  local ok, decoded = pcall(json.decode, output)
+
+  if ok and decoded ~= nil then
+    return decoded
+  end
+
+  return output
+end
+
 function T:call(t, args)
   t = t or {}
   args = args or {}
@@ -84,21 +86,9 @@ function T:call(t, args)
     'cli command is required'
   )
 
-  --
-  -- UTCP placeholder mode.
-  --
-  -- Example:
-  --
-  -- go-harness-filesystem --root .
-  --   UTCP_ARG_tool_UTCP_END
-  --   UTCP_ARG_inputs_UTCP_END
-  --
   if command:find('UTCP_ARG_') then
     command = expand_command(command, args)
   else
-    --
-    -- Traditional CLI argument mode.
-    --
     local parts = { command }
 
     for _, value in ipairs(t.args or self.args or {}) do
@@ -119,9 +109,6 @@ function T:call(t, args)
     command = table.concat(parts, ' ')
   end
 
-  --
-  -- Optional working directory.
-  --
   local working_dir =
     t.working_dir
     or self.working_dir
@@ -150,13 +137,15 @@ function T:call(t, args)
     return nil, output
   end
 
-  local decoded = json.decode(output)
+  -- Explicit output_type wins. Otherwise preserve backwards compatibility:
+  -- decode JSON when possible and return raw text otherwise.
+  local output_type = t.output_type or self.output_type
 
-  if decoded ~= nil then
-    return decoded
+  if output_type == 'text' or output_type == 'string' then
+    return output
   end
 
-  return output
+  return decode_output(output)
 end
 
 function M.new(cfg)
