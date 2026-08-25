@@ -329,30 +329,38 @@ TASK:
      a = 7
      b = 8
 
-2. Store the returned object.
+2. Store the returned object in `add_result`.
 
-3. Extract its numeric `.result`.
+3. Extract the numeric `.result` from `add_result`.
 
 4. Call `calculator.multiply` with:
-     a = the actual `.result` returned by `calculator.add`
+     a = add_result.result
      b = 4
 
-5. Store the returned object.
+5. Store the returned object in `multiply_result`.
 
-6. Extract its numeric `.result`.
+6. Extract the numeric `.result` from `multiply_result`.
 
-7. Return exactly:
+7. Return a table containing the ACTUAL results from the tool calls:
 
-     {
-       sum = 15,
-       product = 60
+     return {
+       sum = add_result.result,
+       product = multiply_result.result
      }
 
 IMPORTANT:
 
-The second tool call MUST use the actual result of the first tool call.
+The program MUST use the values returned by the tool executions.
 
-Therefore this is required:
+The final result MUST NOT hardcode:
+
+     sum = 15
+     product = 60
+
+Even though those are the expected numeric values, the purpose of this
+example is to demonstrate real CodeMode tool chaining.
+
+The following is REQUIRED:
 
     local add_result = codemode.call_tool("calculator.add", {
       a = 7,
@@ -364,12 +372,14 @@ Therefore this is required:
       b = 4
     })
 
-The following is NOT allowed:
+    return {
+      sum = add_result.result,
+      product = multiply_result.result
+    }
 
-    a = 15
+Do NOT calculate 15 or 60 locally.
 
-because the purpose of this example is to demonstrate real CodeMode
-tool chaining.
+Do NOT replace tool results with constants.
 
 Generate ONLY executable Lua source code.
 ]])
