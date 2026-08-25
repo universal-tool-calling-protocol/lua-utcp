@@ -13,12 +13,14 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 --       ↓
 --   CodeMode
 --       ↓
---   canonical UTCP CLI wrapper
+--   canonical UTCP tools
 --       ↓
---   go-harness-filesystem tools
+--   filesystem.read
+--       ↓
+--   filesystem.write
 --
--- The important property is that OpenRouter generates the workflow,
--- while CodeMode executes the actual canonical tool calls.
+-- OpenRouter generates the workflow.
+-- CodeMode executes the canonical UTCP tools.
 
 local utcp = require('utcp')
 local OpenRouter = require('openai.compat.openrouter')
@@ -44,7 +46,7 @@ end
 
 local client = utcp.Client.new()
 
-local provider = add_provider(
+add_provider(
   client,
   'examples/provider.json'
 )
@@ -55,11 +57,13 @@ local codemode = utcp.codemode.new(client)
 -- Discover canonical UTCP tools.
 --
 
-local tools = assert(codemode:list_tools())
+local tools = assert(
+  codemode:list_tools()
+)
 
 assert(
   #tools > 0,
-  'CLI provider returned no tools'
+  'provider returned no tools'
 )
 
 local tool_catalog = {}
@@ -82,11 +86,7 @@ end
 print('-----------------------')
 
 --
--- Find the canonical filesystem wrapper.
---
-
---
--- Discover the canonical filesystem tools.
+-- The provider MUST expose these as real canonical UTCP tools.
 --
 
 local filesystem_read_tool
@@ -110,9 +110,15 @@ assert(
   'canonical filesystem.write tool was not discovered'
 )
 
-print('filesystem read tool: ' .. filesystem_read_tool.name)
-print('filesystem write tool: ' .. filesystem_write_tool.name)
+print(
+  'filesystem read tool: ' ..
+  filesystem_read_tool.name
+)
 
+print(
+  'filesystem write tool: ' ..
+  filesystem_write_tool.name
+)
 
 --
 -- OpenRouter.
@@ -126,94 +132,613 @@ local api_key = assert(
 local openrouter = OpenRouter.new(api_key)
 
 --
--- The model must reason from the actual canonical catalog.
---
--- Do not hard-code filesystem.read / filesystem.write as UTCP tools.
---
--- The canonical UTCP tool is "filesystem".
--- Its "tool" argument is passed to go-harness-filesystem and must
--- contain an actual CLI tool name supported by that executable.
+-- Planner prompt.
 --
 
 local prompt = [[
 You are a Lua CodeMode planner for a UTCP agent.
 
-Generate a SMALL, DETERMINISTIC Lua program that will be executed
-directly by the UTCP CodeMode runtime.
+Your job is to generate ONE SMALL, DETERMINISTIC Lua program that
+will be executed directly by the UTCP CodeMode runtime.
 
 The user wants to refactor README.md.
 
-IMPORTANT OUTPUT RULES:
+============================================================
+OUTPUT FORMAT
+============================================================
 
-- Return ONLY executable Lua source code.
-- Do NOT return Markdown.
-- Do NOT use ``` fences.
-- Do NOT explain the code.
-- Do NOT print anything.
-- Do NOT define functions unless absolutely necessary.
-- Do NOT invent tools.
-- Do NOT invent tool arguments.
-- Do NOT invent result fields.
-- Use ONLY canonical tool names from the supplied UTCP tool catalog.
-- Call tools ONLY through codemode.call_tool(name, args).
-- Arguments MUST match the supplied input schemas exactly.
-- Use actual tool results as inputs to subsequent calls.
-- Never substitute a different tool because it sounds similar.
-- The tool catalog is authoritative.
+Return ONLY executable Lua source code.
 
-AVAILABLE API:
+DO NOT return:
+- Markdown
+- ``` fences
+- explanations
+- comments outside the generated Lua program
+- JSON
+- prose
 
-  codemode.call_tool(name, args)
+The generated program must terminate.
 
-The function returns the tool result directly.
+The generated program must use:
 
-TASK:
+    codemode.call_tool(name, args)
+
+for every UTCP tool invocation.
+
+============================================================
+CRITICAL: UNDERSTAND THE TOOL ARCHITECTURE
+============================================================
+
+The supplied UTCP catalog is AUTHORITATIVE.
+
+The UTCP catalog contains a tool named:
+
+    filesystem
+
+IMPORTANT:
+
+"filesystem.read" is NOT a UTCP tool name.
+
+"filesystem.write" is NOT a UTCP tool name.
+
+"filesystem.patch" is NOT a UTCP tool name.
+
+The ONLY UTCP tool name for filesystem operations is:
+
+    filesystem
+
+The "filesystem" UTCP tool is a wrapper around the
+go-harness-filesystem CLI.
+
+The nested "tool" argument selects the actual CLI operation.
+
+Therefore this is CORRECT:
+
+    codemode.call_tool("filesystem", {
+      tool = "filesystem.read",
+      inputs = {
+        path = "README.md"
+      }
+    })
+
+This is WRONG:
+
+    codemode.call_tool("filesystem.read", {
+      path = "README.md"
+    })
+
+This is ALSO WRONG:
+
+    codemode.call_tool("filesystem", {
+      tool = "read",
+      inputs = {
+        path = "README.md"
+      }
+    })
+
+The first argument to codemode.call_tool MUST be exactly:
+
+    "filesystem"
+
+when interacting with the filesystem wrapper.
+
+The nested "tool" field MUST contain the exact CLI tool name
+supported by go-harness-filesystem.
+
+============================================================
+AVAILABLE FILESYSTEM CLI TOOLS
+============================================================
+
+The go-harness-filesystem CLI exposes these operations:
+
+    filesystem.list
+    filesystem.read
+    filesystem.grep
+    filesystem.write
+    filesystem.replace
+    filesystem.insert
+    filesystem.delete
+    filesystem.patch
+    filesystem.mkdir
+    filesystem.remove
+    filesystem.stat
+    filesystem.rename
+    filesystem.copy
+    filesystem.exists
+
+These names belong to the nested "tool" argument.
+
+They are NOT separate UTCP tool names.
+
+Examples:
+
+READ:
+
+    local read_result = codemode.call_tool("filesystem", {
+      tool = "filesystem.read",
+      inputs = {
+        path = "README.md"
+      }
+    })
+
+PATCH:
+
+    local patch_result = codemode.call_tool("filesystem", {
+      tool = "filesystem.patch",
+      inputs = {
+        patch = patch
+      }
+    })
+
+REPLACE:
+
+    local replace_result = codemode.call_tool("filesystem", {
+      tool = "filesystem.replace",
+      inputs = {
+        path = "README.md",
+        old = old_text,
+        new = new_text
+      }
+    })
+
+============================================================
+FILESYSTEM TOOL SCHEMAS
+============================================================
+
+filesystem.read:
+
+    {
+      path = string
+    }
+
+Response:
+
+    data = string containing the complete file content
+
+Therefore, after reading README.md, use:
+
+    local content = read_result.data
+
+Do NOT invent:
+
+    read_result.result
+    read_result.content
+    read_result.body
+    read_result.text
+
+The documented response field is:
+
+    data
+
+------------------------------------------------------------
+
+filesystem.patch:
+
+    {
+      patch = string
+    }
+
+The patch MUST be a real unified diff.
+
+Example:
+
+    --- a/README.md
+    +++ b/README.md
+    @@
+    -old text
+    +new text
+
+filesystem.patch is the PREFERRED operation for refactoring
+an existing file.
+
+------------------------------------------------------------
+
+filesystem.replace:
+
+    {
+      path = string,
+      old = string,
+      new = string,
+      all = boolean (optional)
+    }
+
+Use only when an exact existing text block is known.
+
+------------------------------------------------------------
+
+filesystem.insert:
+
+    {
+      path = string,
+      content = string,
+      before = string (optional),
+      after = string (optional)
+    }
+
+Use only when an exact anchor is known.
+
+------------------------------------------------------------
+
+filesystem.delete:
+
+    {
+      path = string,
+      text = string,
+      all = boolean (optional)
+    }
+
+Use only when an exact existing block is known.
+
+------------------------------------------------------------
+
+filesystem.write:
+
+    {
+      path = string,
+      content = string
+    }
+
+IMPORTANT:
+
+filesystem.write is ONLY for creating a BRAND NEW file.
+
+README.md already exists.
+
+Therefore:
+
+NEVER use filesystem.write for README.md.
+
+For this task use:
+
+    filesystem.read
+
+followed by:
+
+    filesystem.patch
+
+============================================================
+TASK
+============================================================
 
 Refactor README.md.
 
 The workflow MUST be:
 
-1. Call the canonical filesystem.read tool to read README.md.
+1. Read README.md using:
 
-2. Use the ACTUAL README content returned by filesystem.read.
+       codemode.call_tool("filesystem", {
+         tool = "filesystem.read",
+         inputs = {
+           path = "README.md"
+         }
+       })
 
-3. Generate an improved README while preserving the existing
-   project-specific content.
+2. Obtain the ACTUAL README content from:
 
-4. Call the canonical filesystem.write tool to write the improved
-   README back to README.md.
+       read_result.data
 
-5. Do NOT modify any other file.
+3. Analyze the actual README content.
 
-6. Do NOT use shell.
+4. Improve the README while preserving its existing
+   project-specific information.
 
-7. Do NOT use git.
+5. Generate a unified diff based on the actual README content.
 
-8. Do NOT commit anything.
+6. Apply the modification using:
 
-9. Return:
+       codemode.call_tool("filesystem", {
+         tool = "filesystem.patch",
+         inputs = {
+           patch = patch
+         }
+       })
 
-   {
-     read = <actual read result>,
-     write = <actual write result>
-   }
+7. Return:
 
-IMPORTANT DATA FLOW:
+       return {
+         read = read_result,
+         patch = patch_result
+       }
 
-The write content MUST be derived from the actual read result.
+============================================================
+CRITICAL DATA FLOW
+============================================================
 
-Do NOT hard-code a replacement README.
+The generated program MUST establish this dependency:
 
-Do NOT generate a generic README.
+    filesystem.read
+          ↓
+    actual README content
+          ↓
+    README analysis
+          ↓
+    generated unified diff
+          ↓
+    filesystem.patch
 
-Do NOT call filesystem.write before filesystem.read.
+The patch MUST be derived from the actual result of
+filesystem.read.
 
-Do NOT invent information that is not present in the README or
-canonical tool catalog.
+DO NOT hard-code a replacement README.
 
-CANONICAL UTCP TOOLS:
+DO NOT create a generic README.
+
+DO NOT create a new README from scratch.
+
+DO NOT call filesystem.patch before filesystem.read.
+
+DO NOT call filesystem.write.
+
+DO NOT call filesystem.replace unless the generated program
+actually has an exact old text block from the read result.
+
+DO NOT call filesystem.insert unless the generated program
+actually has an exact anchor from the read result.
+
+============================================================
+README REFACTORING RULES
+============================================================
+
+Preserve useful project-specific information.
+
+Improve:
+
+- structure
+- organization
+- headings
+- readability
+- clarity
+- installation instructions when already present
+- usage examples when already supported
+- existing explanations
+- consistency
+
+You MAY reorganize existing information.
+
+You MAY improve wording.
+
+You MAY remove obvious duplication.
+
+You MAY fix obvious inconsistencies when they are supported
+by the existing README.
+
+You MUST NOT invent:
+
+- project features
+- APIs
+- commands
+- dependencies
+- installation steps
+- configuration
+- environment variables
+- transports
+- examples
+- benchmarks
+- performance claims
+- URLs
+- version numbers
+- tool names
+- tool arguments
+- output fields
+
+If information is not present in the README and is not explicitly
+provided by the tool catalog, do not add it.
+
+============================================================
+PATCH REQUIREMENTS
+============================================================
+
+The generated patch must be a valid unified diff.
+
+It must modify ONLY:
+
+    README.md
+
+It must NOT modify:
+
+- source files
+- tests
+- provider files
+- configuration files
+- git files
+- any other file
+
+The patch should contain enough context for the filesystem.patch
+tool to apply it safely.
+
+Do not produce a patch for a file other than README.md.
+
+============================================================
+TOOL USAGE RULES
+============================================================
+
+Use ONLY canonical UTCP tool names from the supplied catalog.
+
+The canonical UTCP filesystem tool is:
+
+    filesystem
+
+Never call:
+
+    codemode.call_tool("filesystem.read", ...)
+    codemode.call_tool("filesystem.write", ...)
+    codemode.call_tool("filesystem.patch", ...)
+
+Instead call:
+
+    codemode.call_tool("filesystem", {
+      tool = "filesystem.read",
+      inputs = ...
+    })
+
+and:
+
+    codemode.call_tool("filesystem", {
+      tool = "filesystem.patch",
+      inputs = ...
+    })
+
+Never invent a different wrapper.
+
+Never call an unknown UTCP tool.
+
+Never call the nested CLI operation as simply:
+
+    "read"
+
+or:
+
+    "write"
+
+or:
+
+    "patch"
+
+The nested names must be the exact CLI names:
+
+    "filesystem.read"
+    "filesystem.patch"
+
+============================================================
+NO UNNECESSARY OPERATIONS
+============================================================
+
+Only perform the operations necessary to complete the task.
+
+Expected tool sequence:
+
+    filesystem.read
+          ↓
+    filesystem.patch
+
+Do not:
+
+- list the workspace
+- grep the workspace
+- stat README.md
+- check git status
+- run shell commands
+- commit changes
+- inspect unrelated files
+
+README.md is already a known path.
+
+============================================================
+NO SHELL
+============================================================
+
+Do NOT use shell.
+
+Do NOT use os.execute.
+
+Do NOT use io.popen.
+
+Do NOT invoke git.
+
+Do NOT invoke external commands.
+
+Use only:
+
+    codemode.call_tool
+
+============================================================
+NO HALLUCINATION
+============================================================
+
+Never assume that a tool exists.
+
+Never assume an input field exists.
+
+Never assume a result field exists.
+
+Use only the schemas supplied in the canonical tool catalog.
+
+The canonical catalog is authoritative.
+
+============================================================
+TERMINATION
+============================================================
+
+The generated Lua program must terminate after:
+
+1. reading README.md
+2. creating a refactoring patch from the actual content
+3. applying the patch
+4. returning the results
+
+Do not create loops that repeatedly call tools.
+
+Do not retry indefinitely.
+
+Do not wait for external input.
+
+Do not create recursive calls.
+
+============================================================
+EXPECTED PROGRAM SHAPE
+============================================================
+
+The generated program should conceptually look like:
+
+    local read_result = codemode.call_tool("filesystem", {
+      tool = "filesystem.read",
+      inputs = {
+        path = "README.md"
+      }
+    })
+
+    local content = read_result.data
+
+    -- Analyze the actual content.
+    -- Generate a unified diff based on content.
+    -- Do not hard-code an unrelated README.
+
+    local patch_result = codemode.call_tool("filesystem", {
+      tool = "filesystem.patch",
+      inputs = {
+        patch = patch
+      }
+    })
+
+    return {
+      read = read_result,
+      patch = patch_result
+    }
+
+This is a SHAPE example only.
+
+The actual patch MUST be based on the actual README content
+returned by filesystem.read.
+
+============================================================
+FINAL VALIDATION BEFORE RETURNING CODE
+============================================================
+
+Before returning the Lua source, verify mentally that:
+
+1. Every codemode.call_tool call uses a canonical UTCP tool name.
+2. Filesystem calls use "filesystem" as the UTCP tool name.
+3. Nested filesystem operations use exact CLI names.
+4. README.md is read first.
+5. The content comes from read_result.data.
+6. The patch is derived from that content.
+7. filesystem.write is NOT used.
+8. filesystem.patch is used for the existing README.
+9. Only README.md is modified.
+10. No shell or git is used.
+11. No invented result fields are used.
+12. The program terminates.
+13. The program returns read and patch results.
+
+============================================================
+CANONICAL UTCP TOOL CATALOG
+============================================================
 
 ]] .. utcp.json.encode(tool_catalog)
+
+--
+-- Request Lua from OpenRouter.
+--
 
 print('--- requesting Lua from OpenRouter ---')
 
@@ -227,15 +752,28 @@ Use ONLY the canonical tools and schemas supplied by the user.
 
 Never hallucinate tools, arguments, or result fields.
 
-The canonical UTCP tool "filesystem" is a wrapper around the
-go-harness-filesystem CLI.
+The generated program must:
 
-Never invent filesystem.read or filesystem.write as UTCP tool names.
+1. call the canonical filesystem.read tool;
+2. use its actual result;
+3. call the canonical filesystem.write tool;
+4. terminate.
 
-The generated program must execute a real filesystem inspection
-followed by a filesystem mutation.
+Never use a filesystem wrapper.
 
-The generated program MUST terminate after completing the workflow.
+Never use:
+
+  codemode.call_tool("filesystem", ...)
+
+Never use:
+
+  tool = "read"
+
+Never use:
+
+  tool = "write"
+
+Use the exact canonical tool names from the catalog.
 ]]
   },
   {
@@ -244,7 +782,8 @@ The generated program MUST terminate after completing the workflow.
   }
 }, {
   model = os.getenv('OPENROUTER_MODEL')
-    or 'inclusionai/ling-3.0-flash',
+    or 'nvidia/nemotron-3.5-lightning:free',
+
   temperature = 0,
 })
 
@@ -287,12 +826,13 @@ return {
 }
 ]]
 
-local smoke_execution, smoke_err = codemode:call_tool_chain(
-  smoke_source,
-  {
-    instruction_limit = 10000,
-  }
-)
+local smoke_execution, smoke_err =
+  codemode:call_tool_chain(
+    smoke_source,
+    {
+      instruction_limit = 10000,
+    }
+  )
 
 assert(
   smoke_execution,
@@ -306,52 +846,63 @@ print(
 )
 
 --
--- IMPORTANT:
+-- Direct canonical filesystem.read test.
 --
--- Do NOT hard-code "filesystem.read".
+-- This is intentionally NOT:
 --
--- The wrapper is "filesystem", but the operation name is determined
--- by the actual go-harness-filesystem CLI.
+--   filesystem + tool = "read"
 --
--- We discover likely read/write operations from the canonical tool
--- metadata when available.
+-- It must use the canonical UTCP name directly.
 --
 
-local function find_tool_suffix(name, suffix)
-  if type(name) ~= 'string' then
-    return false
-  end
+print('--- canonical filesystem.read test ---')
 
-  return name == suffix
-    or name:match('%.' .. suffix .. '$') ~= nil
-    or name:match(':' .. suffix .. '$') ~= nil
-end
+local read_test_source = [[
+local result = codemode.call_tool("filesystem.read", {
+  path = "README.md"
+})
 
-local read_operation
-local write_operation
+return {
+  read = result
+}
+]]
 
-for _, tool in ipairs(tool_catalog) do
-  if find_tool_suffix(tool.name, 'read') then
-    read_operation = tool.name
-  end
+print('calling filesystem.read...')
 
-  if find_tool_suffix(tool.name, 'write') then
-    write_operation = tool.name
-  end
-end
+local read_execution, read_err =
+  codemode:call_tool_chain(
+    read_test_source,
+    {
+      instruction_limit = 10000,
+    }
+  )
 
---
--- If the CLI exposes the operation names through the filesystem
--- wrapper schema, inspect that schema instead.
---
-
-
-local execution, exec_err = codemode:call_tool_chain(
-  source,
-  {
-    instruction_limit = 100000,
-  }
+assert(
+  read_execution,
+  read_err and read_err.error or
+    'filesystem.read CodeMode test failed'
 )
+
+print(
+  'filesystem.read result:',
+  utcp.json.encode(read_execution.result)
+)
+
+--
+-- Execute OpenRouter-generated CodeMode.
+--
+
+print('--- execution ---')
+print('calling generated CodeMode...')
+print('')
+
+local execution, exec_err =
+  codemode:call_tool_chain(
+    source,
+    {
+      instruction_limit = 100000,
+    }
+  )
 
 assert(
   execution,
@@ -360,6 +911,7 @@ assert(
 )
 
 print('--- execution result ---')
+
 print(
   utcp.json.encode(execution.result)
 )
