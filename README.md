@@ -49,7 +49,7 @@ It lets a Lua application discover tools from providers, keep them in a canonica
 ### LuaRocks
 
 ```sh
-luarocks install lua-utcp-1.0-1.rockspec
+luarocks install lua-utcp-1.2-1.rockspec
 ```
 
 ### From source
