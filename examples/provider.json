@@ -12,37 +12,21 @@
         "inputs": {
           "type": "object",
           "properties": {
-            "a": {
-              "type": "number"
-            },
-            "b": {
-              "type": "number"
-            }
+            "a": { "type": "number" },
+            "b": { "type": "number" }
           },
-          "required": [
-            "a",
-            "b"
-          ]
+          "required": ["a", "b"]
         },
         "outputs": {
           "type": "object",
-          "properties": {
-            "result": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "result"
-          ]
+          "properties": { "result": { "type": "number" } },
+          "required": ["result"]
         },
         "tool_call_template": {
           "call_template_type": "http",
           "url": "http://127.0.0.1:8080/add",
           "http_method": "POST",
-          "body_fields": {
-            "a": "{a}",
-            "b": "{b}"
-          }
+          "body_fields": { "a": "{a}", "b": "{b}" }
         }
       },
       {
@@ -51,37 +35,21 @@
         "inputs": {
           "type": "object",
           "properties": {
-            "a": {
-              "type": "number"
-            },
-            "b": {
-              "type": "number"
-            }
+            "a": { "type": "number" },
+            "b": { "type": "number" }
           },
-          "required": [
-            "a",
-            "b"
-          ]
+          "required": ["a", "b"]
         },
         "outputs": {
           "type": "object",
-          "properties": {
-            "result": {
-              "type": "number"
-            }
-          },
-          "required": [
-            "result"
-          ]
+          "properties": { "result": { "type": "number" } },
+          "required": ["result"]
         },
         "tool_call_template": {
           "call_template_type": "http",
           "url": "http://127.0.0.1:8080/multiply",
           "http_method": "POST",
-          "body_fields": {
-            "a": "{a}",
-            "b": "{b}"
-          }
+          "body_fields": { "a": "{a}", "b": "{b}" }
         }
       },
       {
@@ -95,20 +63,14 @@
               "description": "Existing file path relative to the workspace root."
             }
           },
-          "required": [
-            "path"
-          ],
+          "required": ["path"],
           "additionalProperties": false
         },
-        "outputs": {
-          "type": "object"
-        },
+        "outputs": { "type": "object" },
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
-            {
-              "command": "go-harness-filesystem --root . read UTCP_ARG_path_UTCP_END"
-            }
+            { "command": "go-harness-filesystem --root . read UTCP_ARG_path_UTCP_END" }
           ],
           "working_dir": "."
         }
@@ -128,21 +90,37 @@
               "description": "Complete initial content of the new file."
             }
           },
-          "required": [
-            "path",
-            "content"
-          ],
+          "required": ["path", "content"],
           "additionalProperties": false
         },
-        "outputs": {
-          "type": "object"
-        },
+        "outputs": { "type": "object" },
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
-            {
-              "command": "go-harness-filesystem --root . write UTCP_ARG_path_UTCP_END UTCP_ARG_content_UTCP_END"
+            { "command": "go-harness-filesystem --root . write UTCP_ARG_path_UTCP_END UTCP_ARG_content_UTCP_END" }
+          ],
+          "working_dir": "."
+        }
+      },
+      {
+        "name": "filesystem.patch",
+        "description": "Apply a unified diff patch to existing files in the workspace.",
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "patch": {
+              "type": "string",
+              "description": "Unified diff patch to apply to existing files."
             }
+          },
+          "required": ["patch"],
+          "additionalProperties": false
+        },
+        "outputs": { "type": "object" },
+        "tool_call_template": {
+          "call_template_type": "cli",
+          "commands": [
+            { "command": "go-harness-filesystem --root . patch UTCP_ARG_patch_UTCP_END" }
           ],
           "working_dir": "."
         }
