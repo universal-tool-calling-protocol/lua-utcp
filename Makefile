@@ -15,6 +15,7 @@ test:
 	$(LUA) tests/test_mcp.lua
 	$(LUA) tests/test_template.lua
 	$(LUA) tests/test_transports.lua
+	$(LUA) tests/test_cli.lua
 
 examples-local:
 	$(LUA) examples/manual.lua
