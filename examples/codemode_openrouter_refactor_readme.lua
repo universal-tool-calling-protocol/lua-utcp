@@ -17,7 +17,7 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 --       ↓
 --   filesystem.read
 --       ↓
---   filesystem.write
+--   filesystem.patch
 --
 -- OpenRouter generates the workflow.
 -- CodeMode executes the canonical UTCP tools.
@@ -91,12 +91,15 @@ print('-----------------------')
 
 local filesystem_read_tool
 local filesystem_write_tool
+local filesystem_patch_tool
 
 for _, tool in ipairs(tool_catalog) do
   if tool.name == 'filesystem.read' then
     filesystem_read_tool = tool
   elseif tool.name == 'filesystem.write' then
     filesystem_write_tool = tool
+  elseif tool.name == 'filesystem.patch' then
+    filesystem_patch_tool = tool
   end
 end
 
@@ -110,6 +113,11 @@ assert(
   'canonical filesystem.write tool was not discovered'
 )
 
+assert(
+  filesystem_patch_tool,
+  'canonical filesystem.patch tool was not discovered'
+)
+
 print(
   'filesystem read tool: ' ..
   filesystem_read_tool.name
@@ -118,6 +126,11 @@ print(
 print(
   'filesystem write tool: ' ..
   filesystem_write_tool.name
+)
+
+print(
+  'filesystem patch tool: ' ..
+  filesystem_patch_tool.name
 )
 
 --
@@ -166,159 +179,138 @@ The generated program must use:
 for every UTCP tool invocation.
 
 ============================================================
-CRITICAL: UNDERSTAND THE TOOL ARCHITECTURE
+CRITICAL: CANONICAL UTCP TOOL NAMES
 ============================================================
 
 The supplied UTCP catalog is AUTHORITATIVE.
 
-The UTCP catalog contains a tool named:
+Use the exact tool names from the supplied catalog.
 
-    filesystem
+Filesystem operations are exposed as canonical UTCP tools.
 
-IMPORTANT:
+The canonical filesystem tools include:
 
-"filesystem.read" is NOT a UTCP tool name.
+    filesystem.read
+    filesystem.write
+    filesystem.patch
 
-"filesystem.write" is NOT a UTCP tool name.
+These are REAL UTCP tool names.
 
-"filesystem.patch" is NOT a UTCP tool name.
+They are NOT nested operations.
 
-The ONLY UTCP tool name for filesystem operations is:
+They MUST be passed directly as the first argument to
+codemode.call_tool.
 
-    filesystem
+CORRECT:
 
-The "filesystem" UTCP tool is a wrapper around the
-go-harness-filesystem CLI.
-
-The nested "tool" argument selects the actual CLI operation.
-
-Therefore this is CORRECT:
-
-    codemode.call_tool("filesystem", {
-      tool = "filesystem.read",
-      inputs = {
-        path = "README.md"
-      }
-    })
-
-This is WRONG:
-
-    codemode.call_tool("filesystem.read", {
+    local read_result = codemode.call_tool("filesystem.read", {
       path = "README.md"
     })
 
-This is ALSO WRONG:
+CORRECT:
 
-    codemode.call_tool("filesystem", {
-      tool = "read",
-      inputs = {
-        path = "README.md"
-      }
+    local patch_result = codemode.call_tool("filesystem.patch", {
+      patch = patch
     })
 
-The first argument to codemode.call_tool MUST be exactly:
+CORRECT:
 
-    "filesystem"
+    local write_result = codemode.call_tool("filesystem.write", {
+      path = "new-file.txt",
+      content = content
+    })
 
-when interacting with the filesystem wrapper.
+WRONG:
 
-The nested "tool" field MUST contain the exact CLI tool name
-supported by go-harness-filesystem.
-
-============================================================
-AVAILABLE FILESYSTEM CLI TOOLS
-============================================================
-
-The go-harness-filesystem CLI exposes these operations:
-
-    filesystem.list
-    filesystem.read
-    filesystem.grep
-    filesystem.write
-    filesystem.replace
-    filesystem.insert
-    filesystem.delete
-    filesystem.patch
-    filesystem.mkdir
-    filesystem.remove
-    filesystem.stat
-    filesystem.rename
-    filesystem.copy
-    filesystem.exists
-
-These names belong to the nested "tool" argument.
-
-They are NOT separate UTCP tool names.
-
-Examples:
-
-READ:
-
-    local read_result = codemode.call_tool("filesystem", {
+    codemode.call_tool("filesystem", {
       tool = "filesystem.read",
       inputs = {
         path = "README.md"
       }
     })
 
-PATCH:
+WRONG:
 
-    local patch_result = codemode.call_tool("filesystem", {
-      tool = "filesystem.patch",
-      inputs = {
-        patch = patch
-      }
+    codemode.call_tool("read", {
+      path = "README.md"
     })
 
-REPLACE:
+WRONG:
 
-    local replace_result = codemode.call_tool("filesystem", {
-      tool = "filesystem.replace",
-      inputs = {
-        path = "README.md",
-        old = old_text,
-        new = new_text
-      }
+    codemode.call_tool("write", {
+      path = "README.md",
+      content = content
     })
 
+WRONG:
+
+    codemode.call_tool("patch", {
+      patch = patch
+    })
+
+Never invent a generic "filesystem" wrapper.
+
+Never shorten canonical tool names.
+
+Never remove the "filesystem." prefix.
+
 ============================================================
-FILESYSTEM TOOL SCHEMAS
+CANONICAL FILESYSTEM TOOLS
 ============================================================
 
-filesystem.read:
+The supplied catalog defines the filesystem tools.
+
+Use only names that actually occur in the canonical catalog.
+
+Known filesystem tools include:
+
+    filesystem.read
+    filesystem.write
+
+If filesystem.patch is present in the supplied catalog, it may
+be used for modifying an existing file.
+
+Do NOT assume tools exist merely because they are mentioned in
+this prompt.
+
+The supplied canonical catalog is authoritative.
+
+============================================================
+FILESYSTEM READ
+============================================================
+
+filesystem.read has this input:
 
     {
       path = string
     }
 
-Response:
+For README.md:
 
-    data = string containing the complete file content
+    local read_result = codemode.call_tool("filesystem.read", {
+      path = "README.md"
+    })
 
-Therefore, after reading README.md, use:
+Use the actual returned value from the tool.
 
-    local content = read_result.data
+Do not invent result fields.
 
-Do NOT invent:
+Inspect the actual result structure before assuming a field name.
 
-    read_result.result
-    read_result.content
-    read_result.body
-    read_result.text
+The README content must come from the actual filesystem.read
+result.
 
-The documented response field is:
+============================================================
+FILESYSTEM PATCH
+============================================================
 
-    data
-
-------------------------------------------------------------
-
-filesystem.patch:
+filesystem.patch accepts:
 
     {
       patch = string
     }
 
-The patch MUST be a real unified diff.
+The patch must be a real unified diff.
 
 Example:
 
@@ -328,65 +320,37 @@ Example:
     -old text
     +new text
 
-filesystem.patch is the PREFERRED operation for refactoring
-an existing file.
+filesystem.patch is preferred for modifying an existing README.
 
-------------------------------------------------------------
+Use:
 
-filesystem.replace:
+    codemode.call_tool("filesystem.patch", {
+      patch = patch
+    })
 
-    {
-      path = string,
-      old = string,
-      new = string,
-      all = boolean (optional)
-    }
+Do NOT call:
 
-Use only when an exact existing text block is known.
+    codemode.call_tool("filesystem", ...)
+    codemode.call_tool("patch", ...)
 
-------------------------------------------------------------
+============================================================
+FILESYSTEM WRITE
+============================================================
 
-filesystem.insert:
-
-    {
-      path = string,
-      content = string,
-      before = string (optional),
-      after = string (optional)
-    }
-
-Use only when an exact anchor is known.
-
-------------------------------------------------------------
-
-filesystem.delete:
-
-    {
-      path = string,
-      text = string,
-      all = boolean (optional)
-    }
-
-Use only when an exact existing block is known.
-
-------------------------------------------------------------
-
-filesystem.write:
+filesystem.write accepts:
 
     {
       path = string,
       content = string
     }
 
-IMPORTANT:
-
-filesystem.write is ONLY for creating a BRAND NEW file.
+filesystem.write is intended for creating a new file.
 
 README.md already exists.
 
 Therefore:
 
-NEVER use filesystem.write for README.md.
+NEVER use filesystem.write to modify README.md.
 
 For this task use:
 
@@ -406,16 +370,11 @@ The workflow MUST be:
 
 1. Read README.md using:
 
-       codemode.call_tool("filesystem", {
-         tool = "filesystem.read",
-         inputs = {
-           path = "README.md"
-         }
+       codemode.call_tool("filesystem.read", {
+         path = "README.md"
        })
 
-2. Obtain the ACTUAL README content from:
-
-       read_result.data
+2. Obtain the ACTUAL README content from the result.
 
 3. Analyze the actual README content.
 
@@ -426,11 +385,8 @@ The workflow MUST be:
 
 6. Apply the modification using:
 
-       codemode.call_tool("filesystem", {
-         tool = "filesystem.patch",
-         inputs = {
-           patch = patch
-         }
+       codemode.call_tool("filesystem.patch", {
+         patch = patch
        })
 
 7. Return:
@@ -469,11 +425,13 @@ DO NOT call filesystem.patch before filesystem.read.
 
 DO NOT call filesystem.write.
 
-DO NOT call filesystem.replace unless the generated program
-actually has an exact old text block from the read result.
+DO NOT call filesystem.replace unless that tool actually exists
+in the supplied canonical catalog and the generated program has
+an exact old text block from the read result.
 
-DO NOT call filesystem.insert unless the generated program
-actually has an exact anchor from the read result.
+DO NOT call filesystem.insert unless that tool actually exists
+in the supplied canonical catalog and the generated program has
+an exact anchor from the read result.
 
 ============================================================
 README REFACTORING RULES
@@ -522,7 +480,7 @@ You MUST NOT invent:
 - output fields
 
 If information is not present in the README and is not explicitly
-provided by the tool catalog, do not add it.
+provided by the canonical tool catalog, do not add it.
 
 ============================================================
 PATCH REQUIREMENTS
@@ -554,50 +512,25 @@ TOOL USAGE RULES
 
 Use ONLY canonical UTCP tool names from the supplied catalog.
 
-The canonical UTCP filesystem tool is:
+For filesystem operations, use the exact canonical names:
 
-    filesystem
+    filesystem.read
+    filesystem.write
+    filesystem.patch
 
 Never call:
 
-    codemode.call_tool("filesystem.read", ...)
-    codemode.call_tool("filesystem.write", ...)
-    codemode.call_tool("filesystem.patch", ...)
+    codemode.call_tool("filesystem", ...)
 
-Instead call:
+Never call:
 
-    codemode.call_tool("filesystem", {
-      tool = "filesystem.read",
-      inputs = ...
-    })
-
-and:
-
-    codemode.call_tool("filesystem", {
-      tool = "filesystem.patch",
-      inputs = ...
-    })
+    codemode.call_tool("read", ...)
+    codemode.call_tool("write", ...)
+    codemode.call_tool("patch", ...)
 
 Never invent a different wrapper.
 
 Never call an unknown UTCP tool.
-
-Never call the nested CLI operation as simply:
-
-    "read"
-
-or:
-
-    "write"
-
-or:
-
-    "patch"
-
-The nested names must be the exact CLI names:
-
-    "filesystem.read"
-    "filesystem.patch"
 
 ============================================================
 NO UNNECESSARY OPERATIONS
@@ -680,24 +613,16 @@ EXPECTED PROGRAM SHAPE
 
 The generated program should conceptually look like:
 
-    local read_result = codemode.call_tool("filesystem", {
-      tool = "filesystem.read",
-      inputs = {
-        path = "README.md"
-      }
+    local read_result = codemode.call_tool("filesystem.read", {
+      path = "README.md"
     })
 
-    local content = read_result.data
+    -- Obtain and analyze the actual README content.
 
-    -- Analyze the actual content.
-    -- Generate a unified diff based on content.
-    -- Do not hard-code an unrelated README.
+    local patch = "..."
 
-    local patch_result = codemode.call_tool("filesystem", {
-      tool = "filesystem.patch",
-      inputs = {
-        patch = patch
-      }
+    local patch_result = codemode.call_tool("filesystem.patch", {
+      patch = patch
     })
 
     return {
@@ -717,11 +642,12 @@ FINAL VALIDATION BEFORE RETURNING CODE
 Before returning the Lua source, verify mentally that:
 
 1. Every codemode.call_tool call uses a canonical UTCP tool name.
-2. Filesystem calls use "filesystem" as the UTCP tool name.
-3. Nested filesystem operations use exact CLI names.
-4. README.md is read first.
-5. The content comes from read_result.data.
-6. The patch is derived from that content.
+2. Filesystem calls use "filesystem.read" or another exact
+   canonical filesystem tool name.
+3. No generic "filesystem" wrapper is used.
+4. No shortened "read", "write", or "patch" name is used.
+5. README.md is read first.
+6. The patch is derived from the actual README content.
 7. filesystem.write is NOT used.
 8. filesystem.patch is used for the existing README.
 9. Only README.md is modified.
@@ -752,28 +678,54 @@ Use ONLY the canonical tools and schemas supplied by the user.
 
 Never hallucinate tools, arguments, or result fields.
 
-The filesystem operations are exposed through a single canonical
-UTCP tool named "filesystem". The specific operation is selected
-via a nested "tool" field (e.g. "filesystem.read", "filesystem.patch").
+The canonical filesystem tools are named exactly:
+
+    filesystem.read
+    filesystem.write
+    filesystem.patch
+
+when those tools are present in the supplied catalog.
+
+Use the canonical tool name directly as the first argument to
+codemode.call_tool.
 
 Example:
 
-  codemode.call_tool("filesystem", {
-    tool = "filesystem.read",
-    inputs = { path = "README.md" }
-  })
+    local read_result = codemode.call_tool("filesystem.read", {
+      path = "README.md"
+    })
+
+Example:
+
+    local patch_result = codemode.call_tool("filesystem.patch", {
+      patch = patch
+    })
+
+Never use a generic "filesystem" wrapper.
+
+Never call:
+
+    codemode.call_tool("read", ...)
+    codemode.call_tool("write", ...)
+    codemode.call_tool("patch", ...)
+
+Never call:
+
+    codemode.call_tool("filesystem", {
+      tool = "filesystem.read",
+      inputs = ...
+    })
 
 The generated program must:
 
-1. call the canonical "filesystem" tool with tool = "filesystem.read";
-2. use its actual result (read_result.data);
-3. derive a unified diff from that actual content;
-4. call the canonical "filesystem" tool with tool = "filesystem.patch";
+1. call the canonical "filesystem.read" tool;
+2. use its actual result;
+3. derive a unified diff from the actual README content;
+4. call the canonical "filesystem.patch" tool;
 5. terminate.
 
-Never call "filesystem.read" or "filesystem.write" or "filesystem.patch"
-directly as the first argument to codemode.call_tool — always use
-"filesystem" as the tool name with the operation nested inside "inputs".
+Only use tools that actually appear in the supplied canonical
+catalog.
 ]]
   },
   {
@@ -848,11 +800,8 @@ print(
 --
 -- Direct canonical filesystem.read test.
 --
--- This is intentionally NOT:
---
---   filesystem + tool = "read"
---
--- It must use the canonical UTCP name directly.
+-- This intentionally verifies that the canonical UTCP registry
+-- contains and resolves "filesystem.read".
 --
 
 print('--- canonical filesystem.read test ---')
