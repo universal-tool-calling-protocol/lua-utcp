@@ -17,7 +17,7 @@ local result, err = transport:call({
   call_template_type = 'cli',
   commands = {
     {
-      command = "printf '%s' 'tool=UTCP_ARG_tool_UTCP_END inputs=UTCP_ARG_inputs_UTCP_END'",
+      command = "printf '%s' tool=UTCP_ARG_tool_UTCP_END",
     },
   },
 }, {
@@ -30,7 +30,23 @@ local result, err = transport:call({
 assert(err == nil, err)
 assert(type(result) == 'string')
 assert_contains(result, 'tool=read')
-assert_contains(result, '"path":"README.md"')
+
+local nested_result, nested_err = transport:call({
+  call_template_type = 'cli',
+  commands = {
+    {
+      command = 'printf %s UTCP_ARG_inputs_UTCP_END',
+    },
+  },
+}, {
+  inputs = {
+    path = 'README.md',
+  },
+})
+
+assert(nested_err == nil, nested_err)
+assert(type(nested_result) == 'string')
+assert_contains(nested_result, '"path":"README.md"')
 
 -- Existing command + args configuration must continue to work.
 local legacy = Cli.new({
