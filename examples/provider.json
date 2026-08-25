@@ -73,7 +73,7 @@
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
-            { "command": "go-harness-filesystem --root . filesystem.read UTCP_ARG_path_UTCP_END" }
+            { "command": "go-harness-filesystem --root . filesystem.read UTCP_ARG_JSON_UTCP_END" }
           ],
           "working_dir": ".",
           "output_type": "text"
@@ -104,7 +104,7 @@
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
-            { "command": "go-harness-filesystem --root . filesystem.write UTCP_ARG_path_UTCP_END UTCP_ARG_content_UTCP_END" }
+            { "command": "go-harness-filesystem --root . filesystem.write UTCP_ARG_JSON_UTCP_END" }
           ],
           "working_dir": ".",
           "output_type": "text"
@@ -131,7 +131,7 @@
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
-            { "command": "go-harness-filesystem --root . filesystem.patch UTCP_ARG_patch_UTCP_END" }
+            { "command": "go-harness-filesystem --root . filesystem.patch UTCP_ARG_JSON_UTCP_END" }
           ],
           "working_dir": ".",
           "output_type": "text"
