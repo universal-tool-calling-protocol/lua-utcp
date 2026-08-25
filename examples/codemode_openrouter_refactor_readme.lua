@@ -85,7 +85,7 @@ local api_key = assert(
 )
 
 local openrouter = OpenRouter.new(api_key)
-local model = os.getenv('OPENROUTER_MODEL') or 'stealth/ox-alpha'
+local model = os.getenv('OPENROUTER_MODEL') or 'inclusionai/ling-3.0-flash'
 
 local function request_lua(instruction)
   local status, response = openrouter:create_chat_completion({
