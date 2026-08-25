@@ -111,6 +111,45 @@
         }
       },
       {
+        "name": "diff.unified",
+        "description": "Compute a valid unified diff between original and replacement text. Hunk headers and line counts are derived deterministically from the input strings; callers must not hand-author unified diff hunks themselves.",
+        "inputs": {
+          "type": "object",
+          "properties": {
+            "original": {
+              "type": "string",
+              "description": "The complete original file content."
+            },
+            "replacement": {
+              "type": "string",
+              "description": "The complete replacement file content."
+            },
+            "path": {
+              "type": "string",
+              "description": "File path used in the diff's --- a/<path> and +++ b/<path> headers. Defaults to \"README.md\" if omitted."
+            },
+            "context_size": {
+              "type": "integer",
+              "description": "Number of unchanged context lines to include around each hunk. Defaults to 3."
+            }
+          },
+          "required": ["original", "replacement"],
+          "additionalProperties": false
+        },
+        "outputs": {
+          "type": "string",
+          "description": "A valid unified diff patch that can be passed directly to filesystem.patch."
+        },
+        "tool_call_template": {
+          "call_template_type": "cli",
+          "commands": [
+            { "command": "go-harness-filesystem --root . diff.unified UTCP_ARG_JSON_UTCP_END" }
+          ],
+          "working_dir": ".",
+          "output_type": "text"
+        }
+      },
+      {
         "name": "filesystem.patch",
         "description": "Apply a unified diff patch to existing files in the workspace.",
         "inputs": {

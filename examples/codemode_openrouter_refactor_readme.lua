@@ -11,11 +11,15 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 --       ↓
 --   generate Lua CodeMode
 --       ↓
+--   validate generated CodeMode
+--       ↓
 --   CodeMode
 --       ↓
 --   canonical filesystem.read
 --       ↓
---   refactor README
+--   generate README replacement
+--       ↓
+--   construct deterministic unified diff
 --       ↓
 --   canonical filesystem.patch
 --
@@ -43,6 +47,109 @@ local function load_provider(path)
   return provider
 end
 
+local function validate_generated_code(source)
+  assert(
+    type(source) == 'string' and source ~= '',
+    'generated CodeMode is empty'
+  )
+
+  local function tool_pattern(tool_name)
+    local escaped_name = tool_name:gsub('%.', '%%.')
+
+    return 'codemode%.call_tool%s*%(%s*["\']'
+      .. escaped_name
+      .. '["\']'
+  end
+
+  local function count_tool_calls(tool_name)
+    local count = 0
+    local position = 1
+    local pattern = tool_pattern(tool_name)
+
+    while true do
+      local start, finish = source:find(pattern, position)
+
+      if not start then
+        break
+      end
+
+      count = count + 1
+      position = finish + 1
+    end
+
+    return count
+  end
+
+  local function find_tool_call(tool_name)
+    return source:find(tool_pattern(tool_name), 1)
+  end
+
+  local read_count = count_tool_calls('filesystem.read')
+  local patch_count = count_tool_calls('filesystem.patch')
+
+  assert(
+    read_count == 1,
+    'generated CodeMode must contain exactly one filesystem.read call, got '
+      .. tostring(read_count)
+  )
+
+  assert(
+    patch_count >= 1,
+    'generated CodeMode must contain at least one filesystem.patch call'
+  )
+
+  local read_position = find_tool_call('filesystem.read')
+  local patch_position = find_tool_call('filesystem.patch')
+
+  assert(
+    read_position ~= nil,
+    'filesystem.read call not found'
+  )
+
+  assert(
+    patch_position ~= nil,
+    'filesystem.patch call not found'
+  )
+
+  assert(
+    read_position < patch_position,
+    'filesystem.patch must occur after filesystem.read'
+  )
+
+  -- Reject direct filesystem access.
+  assert(
+    not source:find('os%.execute'),
+    'generated CodeMode must not use os.execute'
+  )
+
+  assert(
+    not source:find('io%.popen'),
+    'generated CodeMode must not use io.popen'
+  )
+
+  assert(
+    not source:find('require%s*%('),
+    'generated CodeMode must not use require'
+  )
+
+  -- Reject non-canonical tool names.
+  assert(
+    not source:find(
+      'codemode%.call_tool%s*%(%s*["\']read["\']'
+    ),
+    'generated CodeMode must use canonical tool name filesystem.read'
+  )
+
+  assert(
+    not source:find(
+      'codemode%.call_tool%s*%(%s*["\']patch["\']'
+    ),
+    'generated CodeMode must use canonical tool name filesystem.patch'
+  )
+
+  return true
+end
+
 local client = utcp.Client.new()
 
 local provider = load_provider('examples/provider.json')
@@ -50,8 +157,15 @@ assert(client:add_provider(provider))
 
 local codemode = utcp.codemode.new(client)
 
-local tools = assert_ok(codemode:list_tools(), 'failed to list UTCP tools')
-assert(#tools > 0, 'provider returned no tools')
+local tools = assert_ok(
+  codemode:list_tools(),
+  'failed to list UTCP tools'
+)
+
+assert(
+  #tools > 0,
+  'provider returned no tools'
+)
 
 local catalog = {}
 
@@ -83,106 +197,150 @@ local api_key = assert(
 )
 
 local openrouter = OpenRouter.new(api_key)
+
 local model = os.getenv('OPENROUTER_MODEL')
   or 'nvidia/nemotron-3.5-lightning:free'
 
-local catalog_json = assert(utcp.json.encode(catalog))
+local catalog_json = assert(
+  utcp.json.encode(catalog)
+)
 
-local status, response = openrouter:create_chat_completion({
-  {
-    role = 'system',
-    content = [[
+local system_prompt = [=[
 You generate a deterministic Lua program for lua-utcp CodeMode.
 
 Return ONLY executable Lua source code.
 Do not use Markdown fences.
 
-The program MUST perform the complete README refactoring workflow.
-It is NOT acceptable to only read README.md.
+The generated program MUST execute this workflow:
 
-Available tool API:
+    filesystem.read
+        ↓
+    extract README content
+        ↓
+    generate replacement README content
+        ↓
+    construct patch
+        ↓
+    filesystem.patch
+        ↓
+    return patch_result
 
-  codemode.call_tool(name, args)
-
-IMPORTANT:
-The program MUST contain BOTH of these calls:
+The program MUST contain exactly ONE filesystem.read call:
 
   local read_result = codemode.call_tool(
     "filesystem.read",
     { path = "README.md" }
   )
 
-and later:
+The program MUST contain a filesystem.patch call AFTER filesystem.read:
 
   local patch_result = codemode.call_tool(
     "filesystem.patch",
     { patch = patch }
   )
 
-The program must use the actual value of read_result when constructing
-the patch.
+IMPORTANT:
 
-Required execution flow:
+The value returned by filesystem.read MUST participate in generating
+the replacement README.
 
-1. Read README.md:
+The generated README MUST be based on the actual README returned by
+filesystem.read.
 
-   local read_result = codemode.call_tool(
-     "filesystem.read",
-     { path = "README.md" }
-   )
+Do NOT invent project-specific facts.
 
-2. Extract the actual README content from read_result.
+Do NOT replace the README with a generic placeholder README.
 
-3. Construct a unified diff stored in a variable named `patch`.
+Do NOT guess the project type.
 
-4. The patch must improve README.md structure, clarity, and readability.
+Do NOT invent:
 
-5. The patch must be based ONLY on the README content returned by
-   filesystem.read.
+  - features
+  - APIs
+  - commands
+  - dependencies
+  - URLs
+  - versions
+  - benchmarks
+  - architecture claims
+  - project capabilities
 
-6. Preserve all project-specific facts already present in the README.
+Do NOT implement a generic diff algorithm.
 
-7. Never invent:
-   - features
-   - APIs
-   - commands
-   - dependencies
-   - URLs
-   - versions
-   - benchmarks
-   - architecture claims
-   - project capabilities
+Do NOT manually calculate unified diff hunk line counts.
 
-8. Apply the generated diff:
+Instead, generate the complete replacement README content and construct
+a valid unified diff from the actual original README and replacement.
 
-   local patch_result = codemode.call_tool(
-     "filesystem.patch",
-     { patch = patch }
-   )
+The generated program should conceptually follow this structure:
 
-9. Return patch_result.
+  local read_result = codemode.call_tool(
+    "filesystem.read",
+    { path = "README.md" }
+  )
 
-The program MUST NOT terminate after filesystem.read.
+  local original_content = read_result
 
-The program MUST call filesystem.patch after filesystem.read.
+  -- extract the actual README content from original_content
 
-The program MUST NOT call filesystem.read more than once.
+  local replacement = [[
+  ...
+  ]]
 
-The program MUST NOT call filesystem.write.
+  -- construct a valid unified diff from original_content
+  -- and replacement
 
-The patch must modify ONLY README.md.
+  local patch_result = codemode.call_tool(
+    "filesystem.patch",
+    { patch = patch }
+  )
 
-Use ONLY these canonical tool names:
+  return patch_result
+
+The replacement README MUST:
+
+1. Preserve all factual information from the original README.
+
+2. Improve structure, clarity, and readability.
+
+3. Remove placeholder text only when the original README clearly
+   identifies it as placeholder text.
+
+4. Never introduce unsupported technical details.
+
+5. Keep the project name and existing factual information.
+
+6. Avoid inventing installation commands.
+
+7. Avoid inventing usage commands.
+
+8. Avoid inventing dependencies.
+
+9. Avoid inventing licenses.
+
+10. Avoid inventing URLs.
+
+The patch MUST be a valid unified diff.
+
+The generated program is responsible for constructing the diff.
+
+The generated program MUST NOT call filesystem.read more than once.
+
+The generated program MUST NOT call filesystem.write.
+
+The generated program MUST NOT call any tool other than:
 
   filesystem.read
   filesystem.patch
 
 Never use:
+
   read
   patch
   filesystem
 
 Do not use:
+
   os.execute
   io.popen
   require
@@ -190,14 +348,34 @@ Do not use:
   git
   direct filesystem access
 
-The program must terminate and return a Lua value.
+The model never gets direct filesystem access.
+
+All filesystem operations MUST go through:
+
+  codemode.call_tool(name, args)
+
+The generated program must terminate and return a Lua value.
 
 Canonical tool catalog:
-]] .. catalog_json,
+]=] .. catalog_json
+
+print('--- OpenRouter model ---')
+print(model)
+print('------------------------')
+
+local status, response = openrouter:create_chat_completion({
+  {
+    role = 'system',
+    content = system_prompt,
   },
   {
     role = 'user',
-    content = 'Refactor README.md using the workflow described above.',
+    content = [[
+Refactor README.md using the workflow described above.
+
+The final README must be based exclusively on the actual README content
+returned by filesystem.read.
+]],
   },
 }, {
   model = model,
@@ -222,22 +400,59 @@ assert(
 
 source = strip_code_fence(source)
 
+print('')
 print('--- generated README refactor CodeMode ---')
 print(source)
 print('------------------------------------------')
+print('')
 
-local execution, execution_error = codemode:call_tool_chain(
-  source,
-  { instruction_limit = 30000 }
+print('--- validating generated CodeMode ---')
+
+local valid, validation_error = pcall(
+  validate_generated_code,
+  source
 )
 
 assert(
-  execution,
-  utcp.json.encode(execution_error)
+  valid,
+  'generated CodeMode validation failed: '
+    .. tostring(validation_error)
 )
 
+print('CodeMode validation: OK')
+print('')
+
+print('--- executing CodeMode ---')
+
+local execution, execution_error = codemode:call_tool_chain(
+  source,
+  {
+    instruction_limit = 30000,
+  }
+)
+
+if not execution then
+  print('--- CodeMode execution error ---')
+  print(utcp.json.encode(execution_error))
+  print('--------------------------------')
+
+  error(
+    'CodeMode execution failed: '
+      .. tostring(utcp.json.encode(execution_error))
+  )
+end
+
+print('CodeMode execution: OK')
+print('')
+
 print('--- filesystem.patch result ---')
-print(utcp.json.encode(execution.result))
+
+if execution.result ~= nil then
+  print(utcp.json.encode(execution.result))
+else
+  print('null')
+end
+
 print('--------------------------------')
 
 print('CodeMode README refactor: ok')
