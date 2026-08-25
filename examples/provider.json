@@ -66,13 +66,17 @@
           "required": ["path"],
           "additionalProperties": false
         },
-        "outputs": { "type": "object" },
+        "outputs": {
+          "type": "string",
+          "description": "The complete UTF-8 contents of the requested file."
+        },
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
             { "command": "go-harness-filesystem --root . filesystem.read UTCP_ARG_path_UTCP_END" }
           ],
-          "working_dir": "."
+          "working_dir": ".",
+          "output_type": "text"
         }
       },
       {
@@ -93,13 +97,17 @@
           "required": ["path", "content"],
           "additionalProperties": false
         },
-        "outputs": { "type": "object" },
+        "outputs": {
+          "type": "string",
+          "description": "CLI result returned after creating the file."
+        },
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
             { "command": "go-harness-filesystem --root . filesystem.write UTCP_ARG_path_UTCP_END UTCP_ARG_content_UTCP_END" }
           ],
-          "working_dir": "."
+          "working_dir": ".",
+          "output_type": "text"
         }
       },
       {
@@ -116,13 +124,17 @@
           "required": ["patch"],
           "additionalProperties": false
         },
-        "outputs": { "type": "object" },
+        "outputs": {
+          "type": "string",
+          "description": "CLI result returned after applying the patch."
+        },
         "tool_call_template": {
           "call_template_type": "cli",
           "commands": [
             { "command": "go-harness-filesystem --root . filesystem.patch UTCP_ARG_patch_UTCP_END" }
           ],
-          "working_dir": "."
+          "working_dir": ".",
+          "output_type": "text"
         }
       }
     ]
