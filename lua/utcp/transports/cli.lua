@@ -24,6 +24,13 @@ local function encode_arg(value)
 end
 
 local function expand_command(command, args)
+  command = command:gsub(
+    'UTCP_ARG_JSON_UTCP_END',
+    function()
+      return shellquote(json.encode(args or {}))
+    end
+  )
+
   return command:gsub(
     'UTCP_ARG_([A-Za-z_][A-Za-z0-9_]*)_UTCP_END',
     function(name)
