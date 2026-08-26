@@ -2,9 +2,7 @@
 
 **UTCP for Lua — native tool calling, multiple transports, and LLM-ready CodeMode.**
 
-`lua-utcp` is a Lua implementation of the [Universal Tool Calling Protocol (UTCP)](https://github.com/universal-tool-calling-protocol/utcp-specification).
-
-It lets a Lua application discover tools from providers, keep them in a canonical registry, and call them directly through their native transport. No wrapper server or provider-specific adapter is required.
+`lua-utcp` is a Lua implementation of the [Universal Tool Calling Protocol (UTCP)](https://github.com/universal-tool-calling-protocol/utcp-specification). It allows Lua applications to discover tools from providers, maintain a canonical registry, and invoke them directly via their native transport, eliminating the need for wrapper servers or provider-specific adapters.
 
 ```text
                  UTCP manual / provider
@@ -27,22 +25,22 @@ It lets a Lua application discover tools from providers, keep them in a canonica
                     Tool server
 ```
 
-## Why lua-utcp?
+## Features
 
-- **Native tool calling** — call tools through their native transport instead of introducing a wrapper protocol server.
-- **Canonical registry** — discovered tools have one stable name and schema regardless of transport.
-- **Transport independent** — HTTP, SSE, Streamable HTTP, TCP, UDP, CLI, Text, GraphQL, and MCP are supported.
-- **CodeMode ready** — let an LLM generate Lua that invokes only registered UTCP tools.
-- **LLM friendly** — works with OpenAI-compatible APIs, including OpenRouter through `lua-openai`.
-- **Small Lua API** — designed to be embedded in applications and agents.
-- **Structured errors** — tool and transport failures can be handled programmatically.
+*   **Native Tool Calling**: Invoke tools through their native transport without introducing a wrapper protocol server.
+*   **Canonical Registry**: Tools have a stable, unified name and schema across all transports.
+*   **Transport Independence**: Supports HTTP, SSE, Streamable HTTP, TCP, UDP, CLI, Text, GraphQL, and MCP.
+*   **CodeMode Ready**: Enables LLMs to generate Lua code that exclusively calls registered UTCP tools.
+*   **LLM Friendly**: Compatible with OpenAI-compatible APIs, including OpenRouter via `lua-openai`.
+*   **Minimal Lua API**: Designed for embedding within applications and agents.
+*   **Structured Errors**: Provides programmatic handling for tool and transport failures.
 
 ## Requirements
 
-- Lua 5.3 or 5.4
-- `lua-socket`
-- `lua-cjson` (recommended) or `dkjson`
-- LuaRocks is optional, but recommended for installation
+*   Lua 5.3 or 5.4
+*   `lua-socket`
+*   `lua-cjson` (recommended) or `dkjson`
+*   LuaRocks (optional, but recommended for installation)
 
 ## Installation
 
@@ -52,7 +50,7 @@ It lets a Lua application discover tools from providers, keep them in a canonica
 luarocks install lua-utcp-1.2-1.rockspec
 ```
 
-### From source
+### From Source
 
 ```sh
 git clone https://github.com/universal-tool-calling-protocol/lua-utcp.git
@@ -60,9 +58,9 @@ cd lua-utcp
 make test
 ```
 
-## Quick start
+## Quick Start
 
-Create a client with an HTTP provider, discover its manual, and call a tool:
+This example demonstrates creating a client with an HTTP provider, discovering its manual, and calling a tool:
 
 ```lua
 local utcp = require("utcp")
@@ -88,30 +86,30 @@ assert(result, err)
 print(type(result) == "table" and result.message or result)
 ```
 
-The important part is that the application calls `echo` through the canonical UTCP registry. The underlying transport is an implementation detail.
+The key benefit is that the application invokes the `echo` tool via the canonical UTCP registry, abstracting away the underlying transport mechanism.
 
-## Supported transports
+## Supported Transports
 
-| Transport | Status |
-| --- | --- |
-| HTTP | ✅ Implemented |
-| SSE | ✅ Implemented |
-| Streamable HTTP | ✅ Implemented |
-| TCP | ✅ Implemented |
-| UDP | ✅ Implemented |
-| CLI | ✅ Implemented |
-| Text | ✅ Implemented |
-| GraphQL | ✅ Implemented |
-| MCP JSON-RPC over HTTP | ✅ Implemented |
-| gRPC | Extension point |
-| WebRTC | Extension point |
-| WebSocket | Extension point |
+| Transport             | Status           |
+| :-------------------- | :--------------- |
+| HTTP                  | ✅ Implemented   |
+| SSE                   | ✅ Implemented   |
+| Streamable HTTP       | ✅ Implemented   |
+| TCP                   | ✅ Implemented   |
+| UDP                   | ✅ Implemented   |
+| CLI                   | ✅ Implemented   |
+| Text                  | ✅ Implemented   |
+| GraphQL               | ✅ Implemented   |
+| MCP JSON-RPC over HTTP| ✅ Implemented   |
+| gRPC                  | Extension point  |
+| WebRTC                | Extension point  |
+| WebSocket             | Extension point  |
 
-The core client and registry are transport independent. A transport implements the required call/stream behavior and can be registered through `lua/utcp/transports/init.lua`.
+The core client and registry are transport-agnostic. New transports can be implemented and registered via `lua/utcp/transports/init.lua`.
 
-## Define a UTCP manual directly
+## Defining a UTCP Manual Directly
 
-You can register a manual without remote discovery:
+You can register a manual without relying on remote discovery:
 
 ```lua
 client:add_manual({
@@ -138,7 +136,7 @@ client:add_manual({
 })
 ```
 
-This makes the tool available through the same canonical registry used by discovered providers.
+This makes the tool accessible through the same canonical registry used for discovered providers.
 
 ## Streaming
 
@@ -150,13 +148,11 @@ client:call_tool_stream("events", {}, function(event)
 end)
 ```
 
-SSE parsing supports `event`, `id`, and multi-line `data` fields. JSON event payloads are decoded when possible.
+The SSE parser handles `event`, `id`, and multi-line `data` fields, decoding JSON payloads when possible.
 
 ## CodeMode
 
-CodeMode is the LLM-oriented execution layer of `lua-utcp`.
-
-Instead of asking a model to produce provider-specific HTTP requests, shell commands, or transport calls, the model generates Lua and uses the canonical UTCP registry:
+CodeMode is the LLM-focused execution layer of `lua-utcp`. It provides a constrained Lua environment where models generate code that interacts with the canonical UTCP registry, rather than directly producing transport-specific calls.
 
 ```lua
 local codemode = utcp.codemode.new(client)
@@ -166,11 +162,11 @@ local result = codemode.call_tool("echo", {
 })
 ```
 
-The CodeMode interface deliberately exposes **canonical tool operations**, not the underlying client or transport implementation. This gives the model a constrained execution surface and prevents it from inventing transport calls or tool endpoints.
+The CodeMode API exposes only canonical tool operations, preventing the LLM from generating invalid transport calls or accessing undefined tool endpoints.
 
-### CodeMode tool chain
+### CodeMode Tool Chain
 
-A generated Lua program can orchestrate multiple registered tools:
+Generated Lua programs can orchestrate multiple registered tools:
 
 ```lua
 local execution = assert(codemode:call_tool_chain([[
@@ -179,7 +175,7 @@ local execution = assert(codemode:call_tool_chain([[
 ]]))
 ```
 
-The flow is:
+The execution flow is as follows:
 
 ```text
 LLM
@@ -199,11 +195,11 @@ Native transport
 Tool server
 ```
 
-This separation is especially useful for agent runtimes: the LLM decides **what computation to express**, while UTCP remains responsible for **which tools actually exist and how they are called**.
+This separation is particularly beneficial for agent runtimes, allowing the LLM to focus on expressing computation while UTCP manages tool discovery and invocation.
 
-## OpenRouter + CodeMode
+## OpenRouter + CodeMode Integration
 
-`lua-utcp` includes examples showing how to combine CodeMode with an OpenAI-compatible LLM API through [`lua-openai`](https://github.com/leafo/lua-openai).
+`lua-utcp` includes examples demonstrating the integration of CodeMode with OpenAI-compatible LLM APIs via [`lua-openai`](https://github.com/leafo/lua-openai).
 
 Install the optional dependency and configure your API key:
 
@@ -224,13 +220,13 @@ Run the generated-CodeMode example:
 make example-openrouter-codemode
 ```
 
-Or run the chat-session variant:
+Or execute the chat-session variant:
 
 ```sh
 make example-openrouter-codemode-chat
 ```
 
-The complete architecture is:
+The complete architecture for this integration is:
 
 ```text
 OpenRouter / lua-openai
@@ -250,16 +246,16 @@ OpenRouter / lua-openai
      Tool server
 ```
 
-The model receives the discovered UTCP tool catalog and is instructed to emit Lua CodeMode. Generated code can invoke registered tools through `codemode.call_tool(...)`, but does not need direct access to transport objects.
+The LLM receives the discovered UTCP tool catalog and is prompted to generate Lua CodeMode. The generated code invokes registered tools using `codemode.call_tool(...)` without direct access to transport objects.
 
-See:
+Refer to the following examples:
 
-- `examples/openrouter_codemode.lua`
-- `examples/openrouter_codemode_chat.lua`
+*   `examples/openrouter_codemode.lua`
+*   `examples/openrouter_codemode_chat.lua`
 
-## Provider JSON → UTCP → CodeMode
+## Provider JSON → UTCP → CodeMode Flow
 
-Providers can also be described in JSON and loaded into the canonical registry:
+Providers can also be defined in JSON and loaded into the canonical registry:
 
 ```lua
 local utcp = require("utcp")
@@ -281,44 +277,44 @@ local execution = assert(codemode:call_tool_chain([[
 
 Related examples:
 
-- `provider.json`
-- `examples/provider_flow.lua`
-- `examples/provider_codemode.lua`
+*   `provider.json`
+*   `examples/provider_flow.lua`
+*   `examples/provider_codemode.lua`
 
 ## Architecture
 
-The implementation is intentionally split into small layers:
+The implementation is structured into modular layers:
 
 ```text
 utcp
-├── client       discovery + invocation
-├── registry     canonical provider/tool index
-├── transports   native transport implementations
-├── codemode     constrained Lua execution API
-├── json         JSON backend abstraction
-└── errors       structured error handling
+├── client       # Discovery and invocation logic
+├── registry     # Canonical provider/tool index
+├── transports   # Native transport implementations
+├── codemode     # Constrained Lua execution API
+├── json         # JSON backend abstraction
+└── errors       # Structured error handling
 ```
 
-### Core modules
+### Core Modules
 
-- `utcp.client` — provider discovery, manual registration, and tool invocation.
-- `utcp.registry` — provider/tool indexing and name/tag lookup.
-- `utcp.transports.*` — transport implementations.
-- `utcp.codemode` — Lua execution and canonical tool access.
-- `utcp.json` — JSON backend abstraction.
-- `utcp.errors` — structured errors.
+*   `utcp.client`: Handles provider discovery, manual registration, and tool invocation.
+*   `utcp.registry`: Manages the indexing and lookup of providers and tools by name and tag.
+*   `utcp.transports.*`: Contains implementations for various native transports.
+*   `utcp.codemode`: Provides the Lua execution environment and canonical tool access for LLMs.
+*   `utcp.json`: Abstracts the underlying JSON library.
+*   `utcp.errors`: Defines the structure for error handling.
 
-## Examples and local servers
+## Examples and Local Servers
 
-Network examples use local servers under `examples/servers/`.
+Network-related examples utilize local servers located in `examples/servers/`.
 
-Start the demo servers with:
+To start all demo servers:
 
 ```sh
 make servers
 ```
 
-Or start an individual server with one of the `make server-*` targets.
+Alternatively, start individual servers using `make server-*` targets.
 
 ## Testing
 
@@ -328,30 +324,30 @@ Run the unit and core test suite:
 make test
 ```
 
-Run transport integration tests:
+Execute transport integration tests:
 
 ```sh
 make integration
 ```
 
-## Project structure
+## Project Structure
 
-```text
+```
 lua-utcp/
-├── lua/                    # library implementation
-├── tests/                  # unit and transport tests
-├── examples/               # usage and CodeMode examples
-├── examples/servers/       # local demo tool servers
-├── provider.json            # provider flow example
+├── lua/                    # Library implementation
+├── tests/                  # Unit and transport tests
+├── examples/               # Usage and CodeMode examples
+├── examples/servers/       # Local demo tool servers
+├── provider.json            # Example provider definition file
 ├── Makefile
 └── lua-utcp-*.rockspec
 ```
 
-## Related projects
+## Related Projects
 
-- [UTCP specification](https://github.com/universal-tool-calling-protocol/utcp-specification)
-- [Go UTCP](https://github.com/universal-tool-calling-protocol/go-utcp)
-- [Rust UTCP](https://github.com/universal-tool-calling-protocol/rs-utcp)
+*   [UTCP specification](https://github.com/universal-tool-calling-protocol/utcp-specification)
+*   [Go UTCP](https://github.com/universal-tool-calling-protocol/go-utcp)
+*   [Rust UTCP](https://github.com/universal-tool-calling-protocol/rs-utcp)
 
 ## License
 
