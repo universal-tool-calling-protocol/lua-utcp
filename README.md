@@ -2,7 +2,7 @@
 
 **UTCP for Lua — native tool calling, multiple transports, and LLM-ready CodeMode.**
 
-`lua-utcp` is a Lua implementation of the [Universal Tool Calling Protocol (UTCP)](https://github.com/universal-tool-calling-protocol/utcp-specification). It allows Lua applications to discover tools from providers, maintain a canonical registry, and invoke them directly via their native transport, eliminating the need for wrapper servers or provider-specific adapters.
+`lua-utcp` is a Lua implementation of the [Universal Tool Calling Protocol (UTCP)](https://github.com/universal-tool-calling-protocol/utcp-specification). It enables Lua applications to discover tools from providers, maintain a canonical registry, and invoke them directly via their native transport, eliminating the need for wrapper servers or provider-specific adapters.
 
 ```text
                  UTCP manual / provider
