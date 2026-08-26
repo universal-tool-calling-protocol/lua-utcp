@@ -1,4 +1,4 @@
-local json=require('utcp.json'); local Registry=require('utcp.registry'); local transports=require('utcp.transports'); local errors=require('utcp.errors')
+local json=require('utcp.json'); local Registry=require('utcp.registry'); local transports=require('utcp.transports'); local errors=require('utcp.errors'); local Chain=require('utcp.chain')
 local Client={}; Client.__index=Client
 local aliases={streamable_http='streamable',streamable='streamable',http='http',sse='sse',tcp='tcp',udp='udp',cli='cli',text='text',graphql='graphql',mcp='mcp'}
 function Client.new(cfg)
@@ -154,6 +154,9 @@ function Client:call_tool(name,args)
     tpl,
     args or {}
   )
+end
+function Client:call_tool_chain(workflow)
+  return Chain.run(self, workflow)
 end
 function Client:call_tool_stream(name,args,on_event)
   local tool,p=self:find_tool(name); if not tool then return nil,p end; local tpl=tool.tool_call_template or tool.call_template or tool; local typ=aliases[tpl.call_template_type or tpl.provider_type or 'sse'];
