@@ -12,6 +12,7 @@ test:
 	$(LUA) tests/test_codemode.lua
 	$(LUA) tests/test_provider_json.lua
 	$(LUA) tests/test_client_lookup.lua
+	$(LUA) tests/test_call_tool_chain.lua
 	$(LUA) tests/test_mcp.lua
 	$(LUA) tests/test_template.lua
 	$(LUA) tests/test_transports.lua
