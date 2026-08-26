@@ -8,6 +8,7 @@ build = {
   modules = {
     ["utcp"] = "lua/utcp/init.lua",
     ["utcp.client"] = "lua/utcp/client.lua",
+    ["utcp.chain"] = "lua/utcp/chain.lua",
     ["utcp.registry"] = "lua/utcp/registry.lua",
     ["utcp.errors"] = "lua/utcp/errors.lua",
     ["utcp.json"] = "lua/utcp/json.lua",
