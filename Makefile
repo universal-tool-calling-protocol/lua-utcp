@@ -4,6 +4,7 @@ export LUA_PATH
 
 .PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
  example-http example-sse example-streamable example-tcp example-udp \
+ benchmark \
  example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode \
  example-openrouter-codemode example-openrouter-codemode-chat example-openrouter-codemode-repair
 
@@ -62,6 +63,9 @@ integration:
 	$(LUA) tests/test_http.lua
 
 check: test
+
+benchmark:
+	$(LUA) benchmarks/transport_cache.lua
 
 zip:
 	zip -qr lua-utcp.zip lua lua-utcp-1.0-1.rockspec README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
