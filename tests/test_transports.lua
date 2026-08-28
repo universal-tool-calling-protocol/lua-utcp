@@ -54,6 +54,10 @@ local text, text_err = http:request('GET', 'http://test.local/text', nil, {})
 assert(text == 'not-json')
 assert(text_err == nil)
 
+install_fake_http({ok = true, code = 200, body = 'false', headers = {['content-type'] = 'application/json'}})
+local boolean = http:request('GET', 'http://test.local/boolean', nil, {})
+assert(boolean == false, 'JSON false must not fall back to the raw response text')
+
 install_fake_http({ok = true, code = 200, body = 'data: {"value":42}\n\nevent: done\ndata: ok\n\n', headers = {['content-type'] = 'text/event-stream'}})
 local events = {}
 local sse = SSE.new({timeout = 3})

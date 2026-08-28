@@ -2,13 +2,17 @@ local json = require('utcp.json')
 local template = require('utcp.template')
 local auth = require('utcp.auth')
 local M = {}; local T = {}; T.__index = T
+local cached_http, cached_ltn12, socket_error
 
 local function socket_http()
+  if cached_http then return cached_http, cached_ltn12 end
+  if socket_error then return nil, socket_error end
   local ok, http = pcall(require, 'socket.http')
-  if not ok then return nil, 'lua-socket is required' end
+  if not ok then socket_error = 'lua-socket is required'; return nil, socket_error end
   local ok2, ltn12 = pcall(require, 'ltn12')
-  if not ok2 then return nil, 'ltn12 is required' end
-  return http, ltn12
+  if not ok2 then socket_error = 'ltn12 is required'; return nil, socket_error end
+  cached_http, cached_ltn12 = http, ltn12
+  return cached_http, cached_ltn12
 end
 
 local function normalize_error(err)
@@ -66,7 +70,8 @@ function T:request(method, url, body, headers)
   end
 
   local decoded = json.decode(text)
-  return decoded or text, nil, response_headers, text
+  if decoded ~= nil then return decoded, nil, response_headers, text end
+  return text, nil, response_headers, text
 end
 
 function T:call(template_cfg, args)
