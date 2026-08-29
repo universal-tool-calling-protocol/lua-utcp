@@ -1,6 +1,6 @@
 package = "lua-utcp"
-version = "1.5-1"
-source = { url = "https://github.com/universal-tool-calling-protocol/lua-utcp/archive/refs/tags/v1.5.0.tar.gz" }
+version = "1.6-1"
+source = { url = "https://github.com/universal-tool-calling-protocol/lua-utcp/archive/refs/tags/v1.6.0.tar.gz" }
 description = { summary = "Universal Tool Calling Protocol client for Lua", homepage = "https://utcp.io", license = "MPL-2.0" }
 dependencies = { "lua >= 5.3", "luasocket >= 3.1", "lua-cjson >= 2.1" }
 build = {
@@ -16,6 +16,8 @@ build = {
     ["utcp.codemode"] = "lua/utcp/codemode.lua",
     ["utcp.provider"] = "lua/utcp/provider.lua",
     ["utcp.guard"] = "lua/utcp/guard.lua",
+    ["utcp.guards"] = "lua/utcp/guards/init.lua",
+    ["utcp.guards.hol_guard"] = "lua/utcp/guards/hol_guard.lua",
     ["utcp.transports"] = "lua/utcp/transports/init.lua",
     ["utcp.transports.http"] = "lua/utcp/transports/http.lua",
     ["utcp.transports.sse"] = "lua/utcp/transports/sse.lua",

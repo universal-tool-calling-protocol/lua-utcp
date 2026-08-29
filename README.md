@@ -194,6 +194,45 @@ guard = {
 }
 ```
 
+### HOL Guard command-safety adapter
+
+`utcp.guards.hol_guard` adapts [HOL Guard](https://github.com/hashgraph-online/hol-guard)'s
+side-effect-free `hol-guard command test <command> --json` classifier to the
+client guard interface. It only classifies tool calls that can be represented
+as a shell command; it does not replace HOL Guard's native agent harnesses or
+approval center.
+
+Install HOL Guard separately, then configure a command extractor. The adapter
+fails closed for a missing executable, malformed output, unknown result, or an
+unmapped tool call. Set `unmapped_decision` explicitly only when those calls
+are protected elsewhere.
+
+```lua
+local utcp = require("utcp")
+
+local client = utcp.new({
+  guard = utcp.guards.hol_guard.new({
+    command_for = function(call)
+      if call.tool_name == "shell" then
+        return call.args.command
+      end
+    end,
+    unmapped_decision = "deny",
+    approve = function(call, review)
+      -- Present review.reason to an authorized human here.
+      return {decision = "allow"}
+    end,
+  }),
+})
+```
+
+HOL Guard 3's `classification.explicitly_benign` result dispatches the call;
+`review` or `block` statuses use the optional application-owned `approve`
+callback or deny it. A non-benign `no_match` result is held for review rather
+than treated as safe. By default the adapter reads `args.command`; use
+`command_for` for a different tool schema, and `executable` to provide an
+absolute HOL Guard path.
+
 ## Streaming
 
 Streaming tools can be consumed incrementally:

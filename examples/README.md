@@ -47,6 +47,35 @@ unapproved review call reaches a native transport.
 make example-guard
 ```
 
+## HOL Guard example
+
+`hol_guard.lua` wraps a real CLI tool call with the HOL Guard adapter. It
+classifies the requested shell command before UTCP dispatches it: safe commands
+run, blocked commands do not reach the CLI transport, and review decisions ask
+the local user to type `ALLOW`.
+
+Install [HOL Guard](https://github.com/hashgraph-online/hol-guard) first, then
+run the example from the repository root:
+
+```bash
+make example-hol-guard
+```
+
+It checks `git status --short` by default. Override the executable or command
+only when you intend to test it:
+
+```bash
+HOL_GUARD_BIN=/absolute/path/to/hol-guard \
+HOL_GUARD_EXAMPLE_COMMAND='git clean -fd' \
+make example-hol-guard
+```
+
+The command runs only after the adapter returns `allow`, or the local user
+approves a `review` decision. Replace the example callback with an authenticated
+approval workflow in production. Review commands require an interactive terminal
+and the exact uppercase response `ALLOW`; non-interactive runs intentionally deny
+the command rather than approving it implicitly.
+
 # CodeMode example
 
 `codemode.lua` demonstrates the CodeMode execution model. Generated Lua code
