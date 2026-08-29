@@ -1,11 +1,31 @@
 # Changelog
 
-## Unreleased
+## 1.7.0
 
 - Support structured authentication ownership metadata (`ownership` and OAuth2
   `grant_type`) from UTCP issue #62.
 - Add client access to effective auth metadata without introducing credential
   or session state management.
+- Expose effective auth metadata through every built-in transport; HTTP-based
+  transports apply available OAuth2 credentials as Bearer headers.
+- Add runnable examples for auth metadata across all transports and an
+  authenticated HTTP call, plus regression coverage for the metadata API.
+- Make the local example runner probe UDP correctly and skip the interactive
+  Guard example.
+
+## 1.6.0
+
+- Add the HOL Guard command-safety adapter, including an interactive example
+  and regression coverage for allow, deny, review, and malformed verdicts.
+- Improve the LuaRocks and CI environment setup used by the adapter and test
+  suite.
+
+## 1.5.0
+
+- Improve the GraphQL, TCP, UDP, and text transports, including more reliable
+  error handling and configuration support.
+- Add local HTTP integration coverage and strengthen transport and CLI tests.
+- Refresh packaging metadata, documentation, and the safe Guard example.
 
 ## 1.4.0
 
