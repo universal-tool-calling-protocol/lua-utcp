@@ -8,7 +8,10 @@ local function socket_http()
   if cached_http then return cached_http, cached_ltn12 end
   if socket_error then return nil, socket_error end
   local ok, http = pcall(require, 'socket.http')
-  if not ok then socket_error = 'lua-socket is required'; return nil, socket_error end
+  if not ok then
+    socket_error = 'lua-socket is required: ' .. tostring(http)
+    return nil, socket_error
+  end
   local ok2, ltn12 = pcall(require, 'ltn12')
   if not ok2 then socket_error = 'ltn12 is required'; return nil, socket_error end
   cached_http, cached_ltn12 = http, ltn12

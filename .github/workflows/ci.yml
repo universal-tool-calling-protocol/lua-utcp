@@ -19,12 +19,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Lua
-        uses: leafo/gh-actions-lua@v11
+        uses: leafo/gh-actions-lua@v13
         with:
           luaVersion: ${{ matrix.lua }}
 
       - name: Set up LuaRocks
-        uses: leafo/gh-actions-luarocks@v5
+        uses: leafo/gh-actions-luarocks@v6
 
       - name: Install dependencies
         run: |
