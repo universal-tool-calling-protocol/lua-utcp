@@ -1,8 +1,31 @@
-local json=require('utcp.json'); local M={}; local T={}; T.__index=T
-function T.new(cfg) return setmetatable(cfg or {},T) end
-function T:call(t,args)
-  local path=t.path or t.file or self.path; assert(path,'text path is required'); local f,err=io.open(path,'r'); if not f then return nil,err end; local s=f:read('*a'); f:close(); local decoded=json.decode(s); if decoded~=nil then return decoded end; return s
+local json = require('utcp.json')
+
+local M = {}
+local T = {}
+T.__index = T
+
+function T.new(cfg)
+  return setmetatable(cfg or {}, T)
 end
-function M.new(cfg) return T.new(cfg) end
-M.Transport=T
+
+function T:call(template_cfg)
+  local path = template_cfg.path or template_cfg.file or self.path
+  assert(path, 'text path is required')
+
+  local file, err = io.open(path, 'r')
+  if not file then return nil, err end
+
+  local text = file:read('*a')
+  file:close()
+
+  local decoded = json.decode(text)
+  if decoded ~= nil then return decoded end
+  return text
+end
+
+function M.new(cfg)
+  return T.new(cfg)
+end
+
+M.Transport = T
 return M

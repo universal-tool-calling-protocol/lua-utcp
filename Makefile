@@ -16,6 +16,7 @@ test:
 	$(LUA) tests/test_mcp.lua
 	$(LUA) tests/test_template.lua
 	$(LUA) tests/test_transports.lua
+	$(LUA) tests/test_cli.lua
 
 examples-local:
 	$(LUA) examples/manual.lua
@@ -63,15 +64,15 @@ example-codemode-openrouter-refactor-readme:
 	$(LUA) examples/codemode_openrouter_refactor_readme.lua
 
 integration:
-	$(LUA) tests/test_http.lua
+	python3 tests/run_http_integration.py "$(LUA)"
 
-check: test
+check: test integration
 
 benchmark:
 	$(LUA) benchmarks/transport_cache.lua
 
 zip:
-	zip -qr lua-utcp.zip lua lua-utcp-1.3-1.rockspec lua-utcp-1.3-1.src.rock README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
+	zip -qr lua-utcp.zip lua lua-utcp-1.4-1.rockspec lua-utcp-1.4-1.src.rock README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
 
 example-provider-test:
 	$(LUA) tests/test_provider_json.lua

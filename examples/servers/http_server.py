@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
+import os
 
 HOST = '127.0.0.1'
-PORT = 8080
+PORT = int(os.environ.get('UTCP_HTTP_PORT', '8080'))
 
 
 class Handler(BaseHTTPRequestHandler):
