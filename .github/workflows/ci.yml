@@ -9,6 +9,8 @@ jobs:
   test:
     name: Lua ${{ matrix.lua }}
     runs-on: ubuntu-latest
+    env:
+      LUAROCKS_TREE: ${{ github.workspace }}/.luarocks
     strategy:
       fail-fast: false
       matrix:
@@ -19,26 +21,32 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Set up Lua
-        uses: leafo/gh-actions-lua@v11
+        uses: leafo/gh-actions-lua@v13
         with:
           luaVersion: ${{ matrix.lua }}
 
       - name: Set up LuaRocks
-        uses: leafo/gh-actions-luarocks@v5
+        uses: leafo/gh-actions-luarocks@v6
+        with:
+          withLuaPath: ${{ github.workspace }}/.lua
 
       - name: Install dependencies
         run: |
-          luarocks install luasocket
-          luarocks install lua-cjson
-          luarocks install dkjson
-          luarocks install luasec
+          luarocks --tree="$LUAROCKS_TREE" install luasocket
+          luarocks --tree="$LUAROCKS_TREE" install lua-cjson
+          luarocks --tree="$LUAROCKS_TREE" install dkjson
+          luarocks --tree="$LUAROCKS_TREE" install luasec
 
-      - name: Verify JSON dependencies
+      - name: Verify dependencies
         run: |
+          eval "$(luarocks --tree="$LUAROCKS_TREE" path)"
+          luarocks --tree="$LUAROCKS_TREE" show luasocket
+          lua -e "assert(require('socket.http'))"
           lua -e "assert(require('dkjson'))"
           lua -e "assert(require('cjson.safe'))"
 
       - name: Run tests
         run: |
+          eval "$(luarocks --tree="$LUAROCKS_TREE" path)"
           make test
           make integration

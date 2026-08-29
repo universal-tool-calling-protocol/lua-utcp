@@ -1,5 +1,10 @@
 LUA ?= lua
-LUA_PATH := ./lua/?.lua;./lua/?/init.lua;;
+# Keep the project sources first, then expose pure-Lua dependencies from the
+# active LuaRocks tree. This is evaluated by make because its exported
+# LUA_PATH overrides any value set by a calling shell.
+LUAROCKS_PATH_ARGS := $(if $(strip $(LUAROCKS_TREE)),--tree="$(LUAROCKS_TREE)")
+LUAROCKS_LUA_PATH := $(shell luarocks $(LUAROCKS_PATH_ARGS) path --lr-path 2>/dev/null)
+LUA_PATH := ./lua/?.lua;./lua/?/init.lua;$(LUAROCKS_LUA_PATH);;
 export LUA_PATH
 
 .PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
