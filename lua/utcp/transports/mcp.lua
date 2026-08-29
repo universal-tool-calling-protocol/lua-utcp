@@ -1,5 +1,6 @@
 local json = require("utcp.json")
 local http = require("utcp.transports.http")
+local auth = require("utcp.auth")
 
 local M = {}
 local T = {}
@@ -19,10 +20,16 @@ function T.new(cfg)
     return setmetatable({
         url = assert(cfg.url, "MCP url is required"),
         headers = headers,
+        auth = cfg.auth,
         timeout = cfg.timeout,
         _id = 0,
     }, T)
 end
+
+function T:auth_metadata()
+    return auth.metadata(self.auth)
+end
+
 function T:request(method, params)
     self._id = self._id + 1
     local payload = {
@@ -35,6 +42,7 @@ function T:request(method, params)
     local result, err, resp_headers = http.new({
         url = self.url,
         headers = self.headers,
+        auth = self.auth,
         timeout = self.timeout,
     }):request("POST", self.url, payload, self.headers)
 

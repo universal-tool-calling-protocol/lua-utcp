@@ -1,4 +1,5 @@
 local json = require('utcp.json')
+local auth = require('utcp.auth')
 local M = {}; local T = {}; T.__index = T
 
 local function emit_event(on_event, event, id, data)
@@ -12,6 +13,10 @@ end
 
 function T.new(cfg) return setmetatable(cfg or {}, T) end
 
+function T:auth_metadata()
+  return auth.metadata(self.auth)
+end
+
 function T:listen(url, on_event)
   local ok, httpmod = pcall(require, 'socket.http')
   if not ok then return nil, 'lua-socket is required' end
@@ -23,6 +28,7 @@ function T:listen(url, on_event)
   local headers = {}
   for k, v in pairs(self.headers or {}) do headers[k] = v end
   headers.accept = headers.accept or 'text/event-stream'
+  headers = auth.apply(headers, self.auth)
 
   local previous_timeout = httpmod.TIMEOUT
   if self.timeout ~= nil then httpmod.TIMEOUT = self.timeout end

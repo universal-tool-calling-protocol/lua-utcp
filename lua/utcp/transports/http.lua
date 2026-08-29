@@ -27,6 +27,10 @@ function T.new(cfg)
   return setmetatable(cfg or {}, T)
 end
 
+function T:auth_metadata()
+  return auth.metadata(self.auth)
+end
+
 function T:request(method, url, body, headers)
   local http, ltn12 = socket_http()
   if not http then return nil, ltn12 end

@@ -35,6 +35,29 @@ Server endpoints:
 
 The servers are implemented under `examples/servers/` and use only Python's standard library.
 
+## Authentication ownership examples
+
+`auth_metadata.lua` is self-contained and prints the OAuth2 ownership metadata
+for every built-in transport, then shows how a tool-level auth block overrides a
+provider-level block:
+
+```bash
+make example-auth-metadata
+```
+
+`auth_http.lua` uses the local HTTP echo server to demonstrate a user-owned
+OAuth2 authorization-code credential. It prints the effective metadata and
+sends the supplied access token as a Bearer header. Start the HTTP server first
+or use the full playground command:
+
+```bash
+make server-http
+make example-auth-http
+```
+
+For a real provider, set `UTCP_DEMO_ACCESS_TOKEN` and replace the local URL;
+token acquisition, refresh, storage, and session state remain application-owned.
+
 ## Guard example
 
 `guard.lua` keeps policy enforcement in the client. It explicitly bypasses a

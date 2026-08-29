@@ -138,6 +138,47 @@ client:add_manual({
 
 This makes the tool accessible through the same canonical registry used for discovered providers.
 
+## Authentication ownership metadata
+
+Authentication blocks accept the additive metadata proposed in [UTCP issue
+#62](https://github.com/universal-tool-calling-protocol/utcp-specification/issues/62).
+`ownership` describes whether a credential is shared by the connector
+(`"static"`, the default) or provisioned for each end user (`"user"`). OAuth2
+blocks may also declare `grant_type`, which defaults to `"client_credentials"`.
+
+```lua
+local client = utcp.new({
+  providers = {
+    {
+      name = "calendar",
+      transport = "http",
+      url = "https://api.example.com",
+      auth = {
+        auth_type = "oauth2",
+        ownership = "user",
+        grant_type = "authorization_code",
+        token = my_access_token,
+      },
+    },
+  },
+})
+
+local metadata = assert(client:auth_metadata("calendar.list_events"))
+assert(metadata.ownership == "user")
+assert(metadata.grant_type == "authorization_code")
+```
+
+`client:auth_metadata(name)` resolves the effective auth block, so a tool-level
+block overrides its provider's block. It returns `nil` when the tool has no
+auth block. Credential acquisition, token refresh, persistence, and per-session
+enablement intentionally remain application responsibilities.
+
+Every built-in transport also exposes `transport:auth_metadata()` for code that
+owns transport construction. HTTP, GraphQL, SSE, Streamable HTTP, and MCP apply
+an available OAuth2 token as a bearer header. CLI, text, TCP, and UDP preserve
+the same metadata but leave credential serialization to the command, file
+access policy, or native wire protocol rather than inventing a transport format.
+
 ## Client-side Guard
 
 Set `guard` on the client to evaluate every `client:call_tool(...)` invocation

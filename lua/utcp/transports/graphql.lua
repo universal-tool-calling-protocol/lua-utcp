@@ -1,4 +1,5 @@
 local http = require('utcp.transports.http')
+local auth = require('utcp.auth')
 
 local M = {}
 local T = {}
@@ -6,6 +7,10 @@ T.__index = T
 
 function T.new(cfg)
   return setmetatable(cfg or {}, T)
+end
+
+function T:auth_metadata()
+  return auth.metadata(self.auth)
 end
 
 function T:call(template_cfg, args)

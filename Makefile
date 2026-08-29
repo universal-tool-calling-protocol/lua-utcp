@@ -8,13 +8,14 @@ LUA_PATH := ./lua/?.lua;./lua/?/init.lua;$(LUAROCKS_LUA_PATH);;
 export LUA_PATH
 
 .PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
- example-http example-sse example-streamable example-tcp example-udp example-guard example-hol-guard \
+ example-http example-sse example-streamable example-tcp example-udp example-guard example-hol-guard example-auth-metadata example-auth-http \
  benchmark \
  example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode \
  example-openrouter-codemode example-openrouter-codemode-chat example-openrouter-codemode-repair
 
 test:
 	$(LUA) tests/test_core.lua
+	$(LUA) tests/test_auth.lua
 	$(LUA) tests/test_codemode.lua
 	$(LUA) tests/test_provider_json.lua
 	$(LUA) tests/test_client_lookup.lua
@@ -30,12 +31,17 @@ examples-local:
 	$(LUA) examples/cli.lua
 	$(LUA) examples/guard.lua
 	$(LUA) examples/codemode.lua
+	$(LUA) examples/auth_metadata.lua
 
 examples:
 	python3 examples/run_examples.py $(LUA)
 
 example-http:
 	$(LUA) examples/http.lua
+example-auth-http:
+	$(LUA) examples/auth_http.lua
+example-auth-metadata:
+	$(LUA) examples/auth_metadata.lua
 example-sse:
 	$(LUA) examples/sse.lua
 example-streamable:

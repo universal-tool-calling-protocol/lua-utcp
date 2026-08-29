@@ -2,6 +2,15 @@
 
 This project follows the current UTCP 1.x shape: a manual contains tools, each tool contains a `tool_call_template`, and the template selects a native communication protocol.
 
+Authentication blocks also accept the additive ownership metadata proposed in
+[UTCP specification issue #62](https://github.com/universal-tool-calling-protocol/utcp-specification/issues/62):
+`ownership` (`static` or `user`) and, for OAuth2, `grant_type`
+(`client_credentials`, `authorization_code`, `device_code`, or `jwt_bearer`).
+The implementation exposes this metadata without tracking credentials or
+session state. Every built-in transport preserves it and exposes it through
+`auth_metadata()`; only HTTP-based transports serialize supported credentials
+as HTTP headers.
+
 The canonical flow is:
 
 1. Construct `utcp.Client` with providers.

@@ -3,6 +3,7 @@ local Registry = require('utcp.registry')
 local transports = require('utcp.transports')
 local errors = require('utcp.errors')
 local Guard = require('utcp.guard')
+local auth = require('utcp.auth')
 
 local Client = {}
 Client.__index = Client
@@ -54,6 +55,11 @@ local function merged_config(provider, template_cfg)
   end
 
   return config
+end
+
+local function metadata_for_config(config)
+  if config.auth == nil then return nil end
+  return auth.metadata(config.auth)
 end
 
 local function mcp_manual(listed_tools)
@@ -282,6 +288,20 @@ function Client:find_tool(name)
   return nil, 'unknown UTCP tool: ' .. tostring(name)
 end
 
+-- Return the structured ownership metadata for a tool's effective auth block.
+-- A tool-level auth block overrides the provider-level block, matching the
+-- transport configuration used by call_tool.
+function Client:auth_metadata(name)
+  local tool, provider = self:find_tool(name)
+  if not tool then
+    tool, provider = self:_discover_tool(name)
+  end
+  if not tool then return nil, provider end
+
+  local template_cfg = tool.tool_call_template or tool.call_template or tool
+  return metadata_for_config(merged_config(provider, template_cfg))
+end
+
 function Client:_discover_tool(name)
   local provider_name, tool_name = type(name) == 'string' and name:match(
     '^([A-Za-z_][A-Za-z0-9_-]*)%.([A-Za-z_][A-Za-z0-9_.-]*)$'
@@ -365,6 +385,9 @@ function Client:call_tool(name, args)
   end
 
   local config = merged_config(provider, template_cfg)
+  local _, auth_err = metadata_for_config(config)
+  if auth_err then return nil, auth_err end
+
   local transport = self:_tool_transport(tool, provider, transport_type, config)
 
   if transport_type == 'mcp' then
@@ -387,6 +410,9 @@ function Client:call_tool_stream(name, args, on_event)
       or 'sse'
   ]
   local config = merged_config(provider, template_cfg)
+  local _, auth_err = metadata_for_config(config)
+  if auth_err then return nil, auth_err end
+
   local transport = self._tool_transports[tool]
 
   if not transport then

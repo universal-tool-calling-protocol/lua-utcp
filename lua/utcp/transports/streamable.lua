@@ -1,5 +1,6 @@
 local http = require('utcp.transports.http')
 local json = require('utcp.json')
+local auth = require('utcp.auth')
 local M = {}; local T = {}; T.__index = T
 
 local function is_event_stream(headers)
@@ -41,6 +42,10 @@ local function emit_sse(raw, on_event)
 end
 
 function T.new(cfg) return setmetatable(cfg or {}, T) end
+
+function T:auth_metadata()
+  return auth.metadata(self.auth)
+end
 
 function T:call(template_cfg, args, on_event)
   local t = http.new(self)

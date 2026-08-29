@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Support structured authentication ownership metadata (`ownership` and OAuth2
+  `grant_type`) from UTCP issue #62.
+- Add client access to effective auth metadata without introducing credential
+  or session state management.
+
 ## 1.4.0
 
 - Add client-side guard evaluation and approval support for tool calls.
