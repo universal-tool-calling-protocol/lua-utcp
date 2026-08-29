@@ -3,7 +3,7 @@ LUA_PATH := ./lua/?.lua;./lua/?/init.lua;;
 export LUA_PATH
 
 .PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
- example-http example-sse example-streamable example-tcp example-udp \
+ example-http example-sse example-streamable example-tcp example-udp example-guard \
  benchmark \
  example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode \
  example-openrouter-codemode example-openrouter-codemode-chat example-openrouter-codemode-repair
@@ -21,6 +21,7 @@ examples-local:
 	$(LUA) examples/manual.lua
 	$(LUA) examples/text.lua
 	$(LUA) examples/cli.lua
+	$(LUA) examples/guard.lua
 	$(LUA) examples/codemode.lua
 
 examples:
@@ -44,6 +45,8 @@ example-cli:
 	$(LUA) examples/cli.lua
 example-text:
 	$(LUA) examples/text.lua
+example-guard:
+	$(LUA) examples/guard.lua
 example-codemode:
 	$(LUA) examples/codemode.lua
 example-provider-flow:

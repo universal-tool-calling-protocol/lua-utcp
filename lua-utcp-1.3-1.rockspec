@@ -15,6 +15,7 @@ build = {
     ["utcp.auth"] = "lua/utcp/auth.lua",
     ["utcp.codemode"] = "lua/utcp/codemode.lua",
     ["utcp.provider"] = "lua/utcp/provider.lua",
+    ["utcp.guard"] = "lua/utcp/guard.lua",
     ["utcp.transports"] = "lua/utcp/transports/init.lua",
     ["utcp.transports.http"] = "lua/utcp/transports/http.lua",
     ["utcp.transports.sse"] = "lua/utcp/transports/sse.lua",

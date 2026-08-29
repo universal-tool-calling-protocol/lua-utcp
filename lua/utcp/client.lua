@@ -1,4 +1,4 @@
-local json=require('utcp.json'); local Registry=require('utcp.registry'); local transports=require('utcp.transports'); local errors=require('utcp.errors')
+local json=require('utcp.json'); local Registry=require('utcp.registry'); local transports=require('utcp.transports'); local errors=require('utcp.errors'); local Guard=require('utcp.guard')
 local Client={}; Client.__index=Client
 local aliases={streamable_http='streamable',streamable='streamable',http='http',sse='sse',tcp='tcp',udp='udp',cli='cli',text='text',graphql='graphql',mcp='mcp'}
 function Client.new(cfg)
@@ -79,6 +79,12 @@ function Client:find_tool(name)
   return nil,'unknown UTCP tool: '..tostring(name)
 end
 function Client:call_tool(name,args)
+  local call_args=args or {}
+  local allowed,guard_err=Guard.evaluate(self.config.guard,{tool_name=name,args=call_args,client=self})
+  if not allowed then
+    return nil,guard_err
+  end
+
   local tool,p=self:find_tool(name)
 
   -- If the tool is not registered yet, try discovering provider manuals.
@@ -165,13 +171,13 @@ function Client:call_tool(name,args)
   if typ=='mcp' then
     return transport:call_tool(
       tpl.name or name,
-      args or {}
+      call_args
     )
   end
 
   return transport:call(
     tpl,
-    args or {}
+    call_args
   )
 end
 function Client:call_tool_stream(name,args,on_event)
