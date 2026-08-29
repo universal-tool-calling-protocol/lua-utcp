@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.4.0
+
+- Add client-side guard evaluation and approval support for tool calls.
+- Add provider-qualified tool lookup and stateful transport caching.
+- Improve CodeMode isolation and structured execution errors.
+
 ## 1.3.0
 
 - Cache constructed transports for repeated tool calls and cache the registry's ordered tool list.

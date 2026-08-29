@@ -47,7 +47,7 @@
 ### LuaRocks
 
 ```sh
-luarocks install lua-utcp-1.3-1.rockspec
+luarocks install lua-utcp-1.4-1.rockspec
 ```
 
 ### From Source
@@ -316,7 +316,7 @@ Providers can also be defined in JSON and loaded into the canonical registry:
 ```lua
 local utcp = require("utcp")
 
-local provider = assert(utcp.load_provider("provider.json"))
+local provider = assert(utcp.load_provider("examples/provider.json"))
 
 local client = utcp.Client.new()
 assert(client:add_provider(provider))
@@ -333,7 +333,7 @@ local execution = assert(codemode:call_tool_chain([[
 
 Related examples:
 
-*   `provider.json`
+*   `examples/provider.json`
 *   `examples/provider_flow.lua`
 *   `examples/provider_codemode.lua`
 
@@ -394,7 +394,7 @@ lua-utcp/
 ├── tests/                  # Unit and transport tests
 ├── examples/               # Usage and CodeMode examples
 ├── examples/servers/       # Local demo tool servers
-├── provider.json            # Example provider definition file
+├── examples/provider.json   # Example provider definition file
 ├── Makefile
 └── lua-utcp-*.rockspec
 ```

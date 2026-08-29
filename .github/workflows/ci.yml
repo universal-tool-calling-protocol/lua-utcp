@@ -28,6 +28,7 @@ jobs:
 
       - name: Install dependencies
         run: |
+          luarocks install luasocket
           luarocks install lua-cjson
           luarocks install dkjson
           luarocks install luasec
@@ -38,4 +39,6 @@ jobs:
           lua -e "assert(require('cjson.safe'))"
 
       - name: Run tests
-        run: make test
+        run: |
+          make test
+          make integration

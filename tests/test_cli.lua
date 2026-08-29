@@ -45,8 +45,8 @@ local nested_result, nested_err = transport:call({
 })
 
 assert(nested_err == nil, nested_err)
-assert(type(nested_result) == 'string')
-assert_contains(nested_result, '"path":"README.md"')
+assert(type(nested_result) == 'table')
+assert(nested_result.path == 'README.md')
 
 -- Existing command + args configuration must continue to work.
 local legacy = Cli.new({
