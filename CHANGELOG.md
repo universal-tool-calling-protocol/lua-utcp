@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.3.0
+
+- Cache constructed transports for repeated tool calls and cache the registry's ordered tool list.
+- Cache LuaSocket HTTP dependencies and preserve valid decoded false values from transport responses.
+- Improve CLI JSON request handling, including the canonical filesystem examples and regression coverage.
+- Add CodeMode OpenRouter repair-loop and README-refactoring examples.
+
+## 1.2.0
+
+- Packaging-only release; this tag contains the same source revision as 1.1.0.
+
+## 1.1.0
+
+- Add the CodeMode error-repair loop and OpenRouter CodeMode examples.
+- Preserve typed HTTP template values and improve transport failure and timeout handling.
+- Add CI coverage for Lua 5.3 and 5.4, plus HTTP, SSE, and Streamable HTTP reliability tests.
+
 ## 1.0.0
 
 - Initial Lua UTCP implementation.

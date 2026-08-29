@@ -68,7 +68,7 @@ benchmark:
 	$(LUA) benchmarks/transport_cache.lua
 
 zip:
-	zip -qr lua-utcp.zip lua lua-utcp-1.0-1.rockspec README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
+	zip -qr lua-utcp.zip lua lua-utcp-1.3-1.rockspec lua-utcp-1.3-1.src.rock README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
 
 example-provider-test:
 	$(LUA) tests/test_provider_json.lua

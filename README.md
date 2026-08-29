@@ -47,7 +47,7 @@
 ### LuaRocks
 
 ```sh
-luarocks install lua-utcp-1.2-1.rockspec
+luarocks install lua-utcp-1.3-1.rockspec
 ```
 
 ### From Source
