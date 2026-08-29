@@ -138,6 +138,62 @@ client:add_manual({
 
 This makes the tool accessible through the same canonical registry used for discovered providers.
 
+## Client-side Guard
+
+Set `guard` on the client to evaluate every `client:call_tool(...)` invocation
+before tool lookup, discovery, or transport dispatch. The guard can be a
+function or an object with `evaluate(call)`. It receives the requested
+`tool_name`, `args`, and `client`, and returns a string or table verdict.
+
+```lua
+local client = utcp.new({
+  guard = {
+    evaluate = function(_, call)
+      if call.tool_name == "delete_account" then
+        return { decision = "review", reason = "human approval required" }
+      end
+      return "allow"
+    end,
+  },
+})
+```
+
+The supported decisions are `allow`, `deny`, `review`, and `error`. Only
+`allow` reaches the underlying HTTP, CLI, MCP, or other native transport, and
+each allowed `call_tool` invocation dispatches once. The other decisions, an
+invalid verdict, or an evaluator failure return a structured UTCP error and do
+not dispatch a tool call.
+
+A `review` decision requires an `approve(call, review_verdict)` method. It must
+return `allow` before the tool is dispatched; without it, the client returns
+`guard_review_required` and makes no transport call.
+
+```lua
+guard = {
+  evaluate = function(_, call)
+    return {decision = "review", reason = "human approval required"}
+  end,
+  approve = function(_, call, review)
+    -- Present review.reason to an authorized human here.
+    return {decision = "allow"}
+  end,
+}
+```
+
+For deliberately safe, client-owned tools, `bypass_tools` can be an exact
+allowlist (an array or `{[tool_name] = true}` map). A bypassed tool skips guard
+evaluation and dispatches normally; use this only for tools whose safety does
+not depend on the Guard policy.
+
+```lua
+guard = {
+  bypass_tools = {"healthcheck", "local_status"},
+  evaluate = function(_, call)
+    return {decision = "deny", reason = "not approved"}
+  end,
+}
+```
+
 ## Streaming
 
 Streaming tools can be consumed incrementally:

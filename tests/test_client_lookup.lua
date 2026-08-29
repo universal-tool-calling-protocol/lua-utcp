@@ -1,5 +1,6 @@
 package.path = './lua/?.lua;./lua/?/init.lua;'..package.path
 local utcp = require('utcp')
+local errors = require('utcp.errors')
 local client = utcp.new({})
 local provider = {name='example', transport='http', url='http://127.0.0.1:8080'}
 client:add_provider(provider)
@@ -48,4 +49,115 @@ cached_client:add_manual({tools={{name='cached',tool_call_template={call_templat
 assert(cached_client:call_tool('cached', {n=3}).n == 3)
 assert(text_constructions == 2, 'replacing a tool must invalidate its cached transport')
 transports.text.new = original_text_new
+
+local original_guard_transport_new = {
+  http = transports.http.new,
+  cli = transports.cli.new,
+  mcp = transports.mcp.new,
+}
+local guard_transport_calls = {http=0,cli=0,mcp=0}
+local guard_transport_constructions = {http=0,cli=0,mcp=0}
+for _,typ in ipairs({'http','cli','mcp'}) do
+  transports[typ].new = function()
+    guard_transport_constructions[typ] = guard_transport_constructions[typ] + 1
+    if typ == 'mcp' then
+      return {
+        call_tool = function(_, _, args)
+          guard_transport_calls[typ] = guard_transport_calls[typ] + 1
+          return {called=guard_transport_calls[typ],args=args}
+        end,
+      }
+    end
+    return {
+      call = function(_, _, args)
+        guard_transport_calls[typ] = guard_transport_calls[typ] + 1
+        return {called=guard_transport_calls[typ],args=args}
+      end,
+    }
+  end
+end
+
+local function guarded_client(verdict, tool_name, transport)
+  local guarded = utcp.new({
+    guard = {
+      evaluate = function(_, call)
+        assert(call.tool_name == tool_name)
+        assert(call.args.value == 7)
+        return verdict
+      end,
+    },
+  })
+  guarded:add_manual({tools={{name=tool_name,tool_call_template={call_template_type=transport}}}})
+  return guarded
+end
+
+for _,case in ipairs({
+  {verdict={decision='deny',reason='blocked by policy'},kind='guard_denied',tool='guarded_http',transport='http'},
+  {verdict={decision='review',reason='approval required'},kind='guard_review_required',tool='guarded_cli',transport='cli'},
+  {verdict={decision='error',reason='guard unavailable'},kind='guard_error',tool='guarded_mcp',transport='mcp'},
+}) do
+  local result, guard_err = guarded_client(case.verdict, case.tool, case.transport):call_tool(case.tool, {value=7})
+  assert(result == nil)
+  assert(errors.is(guard_err) and guard_err.kind == case.kind)
+end
+for _,typ in ipairs({'http','cli','mcp'}) do
+  assert(guard_transport_constructions[typ] == 0, 'non-allow guard decisions must not construct a '..typ..' transport')
+  assert(guard_transport_calls[typ] == 0, 'non-allow guard decisions must not dispatch a '..typ..' transport call')
+end
+
+local allowed_result, allowed_err = guarded_client({decision='allow'}, 'allowed_http', 'http'):call_tool('allowed_http', {value=7})
+assert(allowed_result and allowed_result.called == 1, allowed_err)
+assert(guard_transport_constructions.http == 1, 'an allowed call must construct the HTTP transport once')
+assert(guard_transport_calls.http == 1, 'an allowed call must dispatch exactly once')
+
+local bypass_evaluations = 0
+local bypass_client = utcp.new({
+  guard = {
+    bypass_tools = {'bypass_http'},
+    evaluate = function()
+      bypass_evaluations = bypass_evaluations + 1
+      return {decision='deny'}
+    end,
+  },
+})
+bypass_client:add_manual({tools={{name='bypass_http',tool_call_template={call_template_type='http'}}}})
+local bypass_result, bypass_err = bypass_client:call_tool('bypass_http', {value=7})
+assert(bypass_result and bypass_result.called == 2, bypass_err)
+assert(bypass_evaluations == 0, 'bypassed tools must not evaluate the guard')
+assert(guard_transport_calls.http == 2, 'a bypassed tool must dispatch exactly once')
+
+local review_evaluations, approval_requests = 0, 0
+local approved_review_client = utcp.new({
+  guard = {
+    evaluate = function()
+      review_evaluations = review_evaluations + 1
+      return {decision='review',reason='human approval required'}
+    end,
+    approve = function(_, call, review)
+      approval_requests = approval_requests + 1
+      assert(call.tool_name == 'approved_http')
+      assert(review.decision == 'review')
+      return {decision='allow'}
+    end,
+  },
+})
+approved_review_client:add_manual({tools={{name='approved_http',tool_call_template={call_template_type='http'}}}})
+local approved_result, approved_err = approved_review_client:call_tool('approved_http', {value=7})
+assert(approved_result and approved_result.called == 3, approved_err)
+assert(review_evaluations == 1 and approval_requests == 1, 'review calls must request approval once')
+assert(guard_transport_calls.http == 3, 'an approved review must dispatch exactly once')
+
+local guard_failure_client = utcp.new({
+  guard = function()
+    error('evaluator crashed')
+  end,
+})
+guard_failure_client:add_manual({tools={{name='failed_guard',tool_call_template={call_template_type='http'}}}})
+local failed_result, failed_guard_err = guard_failure_client:call_tool('failed_guard', {value=7})
+assert(failed_result == nil)
+assert(errors.is(failed_guard_err) and failed_guard_err.kind == 'guard_error')
+assert(guard_transport_calls.http == 3, 'a guard failure must not dispatch a transport call')
+for typ,new in pairs(original_guard_transport_new) do
+  transports[typ].new = new
+end
 print('lua-utcp client lookup tests: ok')

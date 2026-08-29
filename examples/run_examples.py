@@ -23,6 +23,7 @@ EXAMPLES = [
     "examples/manual.lua",
     "examples/text.lua",
     "examples/cli.lua",
+    "examples/guard.lua",
     "examples/codemode.lua",
     "examples/http.lua",
     "examples/sse.lua",

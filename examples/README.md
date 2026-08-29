@@ -35,6 +35,18 @@ Server endpoints:
 
 The servers are implemented under `examples/servers/` and use only Python's standard library.
 
+## Guard example
+
+`guard.lua` keeps policy enforcement in the client. It explicitly bypasses a
+safe local profile read and account-summary tool, returning both results without
+policy evaluation. It denies an account deletion; for a payment, it requires an
+approval callback, then dispatches and returns the result. No denied or
+unapproved review call reaches a native transport.
+
+```bash
+make example-guard
+```
+
 # CodeMode example
 
 `codemode.lua` demonstrates the CodeMode execution model. Generated Lua code
