@@ -2,6 +2,22 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local utcp = require('utcp')
 
+-- This CLI prompt is for the example only. A production application should
+-- replace it with its authenticated authorization workflow (for example, a
+-- privileged approval screen that verifies the approver's identity).
+local function request_payment_approval(call, review)
+  io.write(('Human approval required for %s.\n'):format(call.tool_name))
+  io.write(('Reason: %s\n'):format(review.reason or 'No reason provided'))
+  io.write('An authorized approver must type ALLOW to continue: ')
+
+  local response = io.read('*l')
+  if response == 'ALLOW' then
+    return {decision = 'allow'}
+  end
+
+  return {decision = 'deny', reason = 'payment was not approved'}
+end
+
 local client = utcp.new({
   guard = {
     -- These local reads are explicitly safe and do not require evaluation.
@@ -20,8 +36,7 @@ local client = utcp.new({
     approve = function(_, call, review)
       assert(call.tool_name == 'send_payment')
       assert(review.decision == 'review')
-      -- Replace this with a prompt to an authorized human in an application.
-      return {decision = 'allow'}
+      return request_payment_approval(call, review)
     end,
   },
 })
