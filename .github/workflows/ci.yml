@@ -33,12 +33,15 @@ jobs:
           luarocks install dkjson
           luarocks install luasec
 
-      - name: Verify JSON dependencies
+      - name: Verify dependencies
         run: |
+          eval "$(luarocks path)"
+          lua -e "assert(require('socket.http'))"
           lua -e "assert(require('dkjson'))"
           lua -e "assert(require('cjson.safe'))"
 
       - name: Run tests
         run: |
+          eval "$(luarocks path)"
           make test
           make integration
