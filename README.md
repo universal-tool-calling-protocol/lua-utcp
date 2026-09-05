@@ -29,7 +29,8 @@
 
 *   **Native Tool Calling**: Invoke tools through their native transport without introducing a wrapper protocol server.
 *   **Canonical Registry**: Tools have a stable, unified name and schema across all transports.
-*   **Transport Independence**: Supports HTTP, SSE, Streamable HTTP, TCP, UDP, CLI, Text, GraphQL, and MCP.
+*   **Transport Independence**: Supports HTTP, SSE, Streamable HTTP, TCP, UDP, CLI, Text, GraphQL, MCP, WebSocket, gRPC, and WebRTC DataChannels.
+*   **UTCP 1.1 Security**: Enforces `allowed_communication_protocols` during registration and again during calls.
 *   **CodeMode Ready**: Enables LLMs to generate Lua code that exclusively calls registered UTCP tools.
 *   **LLM Friendly**: Compatible with OpenAI-compatible APIs, including OpenRouter via `lua-openai`.
 *   **Minimal Lua API**: Designed for embedding within applications and agents.
@@ -39,15 +40,27 @@
 
 *   Lua 5.3 or 5.4
 *   `lua-socket`
+*   `lua-http` 0.4 or newer (WebSocket)
+*   [`lua-grpc`](https://github.com/Protocol-Lattice/lua-grpc) 0.1.4 or newer (gRPC)
 *   `lua-cjson` (recommended) or `dkjson`
 *   LuaRocks (optional, but recommended for installation)
+
+`lua-http` 0.4 and the current `lua-grpc` dependency chain do not support Lua
+5.5 because `bit32` is unavailable for that interpreter. Use Lua 5.3 or 5.4.
+On Apple Silicon with Homebrew Lua 5.4 installed, select its tree explicitly:
+
+```sh
+LUA54_PREFIX=/opt/homebrew/opt/lua@5.4
+luarocks --lua-version=5.4 --lua-dir="$LUA54_PREFIX" install lua-grpc
+luarocks --lua-version=5.4 --lua-dir="$LUA54_PREFIX" install lua-utcp-1.8-1.rockspec
+```
 
 ## Installation
 
 ### LuaRocks
 
 ```sh
-luarocks install lua-utcp-1.4-1.rockspec
+luarocks install lua-utcp-1.8-1.rockspec
 ```
 
 ### From Source
@@ -101,11 +114,76 @@ The key benefit is that the application invokes the `echo` tool via the canonica
 | Text                  | ✅ Implemented   |
 | GraphQL               | ✅ Implemented   |
 | MCP JSON-RPC over HTTP| ✅ Implemented   |
-| gRPC                  | Extension point  |
-| WebRTC                | Extension point  |
-| WebSocket             | Extension point  |
+| WebSocket             | ✅ Implemented (`lua-http`) |
+| gRPC                  | ✅ Implemented (`lua-grpc`) |
+| WebRTC DataChannel    | ✅ Implemented (binding adapter) |
 
-The core client and registry are transport-agnostic. New transports can be implemented and registered via `lua/utcp/transports/init.lua`.
+The WebSocket transport supports JSON, text and raw responses, persistent
+connections, subprotocols, handshake headers and streaming callbacks. Plain
+`ws://` is accepted only for literal loopback hosts; remote endpoints must use
+`wss://`.
+
+The gRPC transport uses `lua-grpc` directly. A template may point at a generated
+descriptor module, or provide a `method_descriptor`. Unary, server-streaming,
+client-streaming and bidirectional RPC shapes are supported:
+
+```lua
+client:add_manual({tools = {{
+  name = "watch_events",
+  tool_call_template = {
+    call_template_type = "grpc",
+    target = "api.example.com:443",
+    descriptor_module = "events_grpc",
+    service = "Events",
+    method = "Watch"
+  }
+}}})
+
+client:call_tool_stream("watch_events", {topic = "builds"}, function(event)
+  print(event.id)
+end)
+```
+
+WebRTC runtimes differ between Lua hosts, so the transport accepts an existing
+`data_channel`, a `peer_factory`, or a module name in `webrtc_module`. The
+resulting peer implements `send` plus `receive`/`recv`, with optional `connect`
+and `close`. Signaling, ICE and TURN configuration is passed unchanged to the
+adapter; UTCP messages travel on the resulting encrypted DataChannel.
+
+Complete client examples are available in `examples/websocket.lua`,
+`examples/grpc/client.lua`, and `examples/webrtc.lua`; their endpoint and binding
+settings are described in `examples/README.md`.
+
+## UTCP 1.1 configuration
+
+The v1.1 `manual_call_templates` form is supported alongside the older
+`providers` key. Tools are available through qualified `manual.tool` names;
+an unqualified name remains available when it is unambiguous.
+
+```lua
+local client = assert(utcp.create({
+  manual_call_templates = {{
+    name = "tools",
+    call_template_type = "http",
+    url = "https://api.example.com/utcp",
+    allowed_communication_protocols = {"http", "websocket", "grpc"}
+  }},
+  variables = {API_TOKEN = "..."},
+  load_variables_from = {{
+    variable_loader_type = "dotenv",
+    env_file_path = ".env",
+    optional = true
+  }}
+}))
+```
+
+When `allowed_communication_protocols` is absent or empty, the manual may only
+register and call tools using its own protocol. The client exposes the UTCP 1.1
+lifecycle API: `register_manual`, `register_manuals`, `deregister_manual`,
+`call_tool`, `call_tool_streaming`, `search_tools`,
+`get_required_variables_for_manual_and_tools` and
+`get_required_variables_for_registered_tool`. `utcp.migration.manual(...)` and
+`utcp.migration.config(...)` convert v0.1 field names without mutating input.
 
 ## Defining a UTCP Manual Directly
 
@@ -114,7 +192,7 @@ You can register a manual without relying on remote discovery:
 ```lua
 client:add_manual({
   manual_version = "1.0",
-  utcp_version = "1.0",
+  utcp_version = "1.1.0",
   tools = {
     {
       name = "echo",
@@ -396,10 +474,7 @@ Providers can also be defined in JSON and loaded into the canonical registry:
 ```lua
 local utcp = require("utcp")
 
-local provider = assert(utcp.load_provider("examples/provider.json"))
-
-local client = utcp.Client.new()
-assert(client:add_provider(provider))
+local client = assert(utcp.Client.new("examples/provider.json"))
 
 local codemode = utcp.codemode.new(client)
 

@@ -19,6 +19,8 @@ make server-tcp
 make server-udp
 make server-graphql
 make server-mcp
+make server-websocket
+make server-grpc
 ```
 
 Server endpoints:
@@ -32,8 +34,66 @@ Server endpoints:
 | MCP | `http://127.0.0.1:8093/mcp` |
 | TCP | `127.0.0.1:9000` |
 | UDP | `127.0.0.1:9001` |
+| WebSocket | `ws://127.0.0.1:8765` |
+| gRPC | `127.0.0.1:50051` |
 
-The servers are implemented under `examples/servers/` and use only Python's standard library.
+The general servers are implemented under `examples/servers/` with Python's
+standard library. The gRPC Greeter is `examples/grpc/server.lua` and uses
+`lua-grpc` with the bundled schema and descriptor.
+
+## WebSocket, gRPC and WebRTC
+
+`websocket.lua` sends a typed JSON message to an echo endpoint. Start the
+dependency-free bundled server with `make server-websocket`. The client defaults
+to the secure local-development URL `ws://127.0.0.1:8765`; set
+`UTCP_WEBSOCKET_URL` for another endpoint:
+
+```bash
+UTCP_WEBSOCKET_URL=wss://example.test/ws make example-websocket
+```
+
+`grpc/client.lua` demonstrates unary and server-streaming calls against the bundled
+`examples/grpc/server.lua`. Start both sides in separate terminals:
+
+```bash
+make server-grpc
+make example-grpc
+```
+
+The checked-in `helloworld.proto`, Lua service metadata, and embedded descriptor
+make this example runnable without `protoc`. Set `UTCP_GRPC_DESCRIPTOR`,
+`UTCP_GRPC_MODULE`, and `UTCP_GRPC_TARGET` to use another generated service.
+On systems where Lua 5.4 is not installed through Homebrew, set `LUA_BIN` and
+optionally `LUA_DIR`; `examples/grpc/run-lua.sh` loads the matching LuaRocks
+paths before starting either side.
+
+Add `--stream` when running the Lua file directly to call `WatchHello` after
+the unary RPC. `webrtc.lua` shows the binding-neutral DataChannel contract. Set
+the adapter module and signaling endpoint before running it:
+
+```bash
+UTCP_WEBRTC_MODULE=my_webrtc_adapter \
+UTCP_WEBRTC_SIGNALING_URL=wss://signal.example.test/session \
+make example-webrtc
+```
+
+The adapter module exposes `new(config)` and returns an object with `send` and
+`receive`/`recv`; `connect` and `close` are optional.
+
+All three scripts are included in `make examples`. The playground uses their
+self-contained smoke adapters so it remains runnable without external gRPC and
+WebRTC services. Set `UTCP_RUN_REALTIME_EXAMPLES=1` to use the real endpoint,
+descriptor and binding settings instead.
+
+To run only gRPC against the bundled server while WebSocket and WebRTC keep
+using their smoke adapters:
+
+```bash
+UTCP_RUN_REAL_GRPC=1 make examples
+```
+
+The equivalent per-transport switches are `UTCP_RUN_REAL_WEBSOCKET=1` and
+`UTCP_RUN_REAL_WEBRTC=1`.
 
 ## Authentication ownership examples
 
@@ -127,27 +187,29 @@ the canonical UTCP client/registry.
 
 ## provider.json flow
 
-`provider.json` is a concrete provider declaration. The complete flow is:
+`provider.json` contains separate `calculator` (HTTP) and `filesystem` (CLI)
+manuals in one UTCP 1.1 configuration file. The complete flow is:
 
 ```text
 provider.json
     ↓
-utcp.load_provider()
-    ↓
-Client:add_provider()
+Client.new(config_path)
     ↓
 canonical UTCP registry
     ↓
 utcp.codemode.new(client)
     ↓
-codemode.call_tool("calculator.add", args) / codemode.call_tool("calculator.multiply", args)
+codemode.call_tool("calculator.add", args) / codemode.call_tool("filesystem.read", args)
     ↓
 Client:call_tool()
     ↓
-HTTP transport
+HTTP or CLI transport
 ```
 
-Run `lua examples/provider_flow.lua` to inspect the loaded provider and registered CodeMode interfaces. Start an HTTP UTCP provider on `127.0.0.1:8080`, then run `lua examples/provider_codemode.lua` to execute the complete chain.
+Run `lua examples/provider_flow.lua` to inspect both loaded manuals and their
+registered CodeMode interfaces. Start an HTTP UTCP provider on
+`127.0.0.1:8080`, then run `lua examples/provider_codemode.lua` to execute the
+calculator chain.
 
 ## Run the complete local playground
 
@@ -157,7 +219,12 @@ Run every local UTCP server and every transport example with one command:
 make examples
 ```
 
-The command starts HTTP, SSE, Streamable HTTP, GraphQL, MCP, TCP and UDP servers, waits until all ports are ready, executes the examples, and always stops the servers on completion or `Ctrl+C`.
+The command starts the local HTTP, SSE, Streamable HTTP, GraphQL, MCP, TCP, UDP
+and WebSocket servers, waits until all ports are ready, executes the examples,
+and always stops the servers on completion or `Ctrl+C`. Set
+`UTCP_RUN_REAL_GRPC=1` to start the bundled gRPC server and run its real client
+as part of the same playground. `UTCP_RUN_REALTIME_EXAMPLES=1` enables every
+real-time transport and therefore also requires a configured WebRTC adapter.
 
 To only keep all example servers running:
 

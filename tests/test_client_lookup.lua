@@ -2,7 +2,7 @@ package.path = './lua/?.lua;./lua/?/init.lua;'..package.path
 local utcp = require('utcp')
 local errors = require('utcp.errors')
 local client = utcp.new({})
-local provider = {name='example', transport='http', url='http://127.0.0.1:8080'}
+local provider = {name='example', transport='http', url='http://127.0.0.1:8080',allowed_communication_protocols={'http','text'}}
 client:add_provider(provider)
 client:add_manual({tools={{name='echo',description='Echo',inputs={type='object'},tool_call_template={call_template_type='http',url='http://127.0.0.1:8080/echo',http_method='POST'}}}}, provider)
 local tool, p = client:find_tool('echo')

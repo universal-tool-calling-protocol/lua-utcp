@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+- Add WebSocket calls and streaming over `lua-http`, including persistent
+  connections, authentication headers, subprotocols and secure URL checks.
+- Add unary and streaming gRPC calls through `Protocol-Lattice/lua-grpc`.
+- Add a WebRTC DataChannel transport contract for native or embedded bindings.
+- Implement UTCP 1.1 protocol restrictions at registration and dispatch time,
+  `manual_call_templates`, qualified tool names, variable loaders, lifecycle
+  methods and v0.1 migration helpers.
+- Execute complete multi-command CLI templates with working-directory and
+  environment support.
+- Split the example configuration into independent HTTP calculator and CLI
+  filesystem manuals in one UTCP 1.1 file.
+- Add examples for WebSocket, bundled gRPC client/server and WebRTC DataChannel
+  adapters, including portable smoke execution in the complete playground.
+
 ## 1.7.0
 
 - Support structured authentication ownership metadata (`ownership` and OAuth2

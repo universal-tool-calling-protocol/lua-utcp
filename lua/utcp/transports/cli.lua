@@ -51,27 +51,11 @@ local function expand_command(command, args)
   )
 end
 
-local function get_command(t, self)
-  if t and t.command then
-    return t.command
-  end
-
-  if self.command then
-    return self.command
-  end
-
-  local commands = t and t.commands
-
-  if type(commands) == 'table' and commands[1] then
-    if type(commands[1]) == 'string' then
-      return commands[1]
-    end
-
-    if type(commands[1]) == 'table' then
-      return commands[1].command
-    end
-  end
-
+local function get_commands(t, self)
+  local commands = t.commands or self.commands
+  if type(commands) == 'table' and commands[1] then return commands end
+  local command = t.command or self.command
+  if command then return {{command = command, append_to_final_output = true}} end
   return nil
 end
 
@@ -91,63 +75,63 @@ function T:call(t, args)
   t = t or {}
   args = args or {}
 
-  local command = get_command(t, self)
+  local commands = get_commands(t, self)
 
   assert(
-    command,
-    'cli command is required'
+    commands,
+    'cli command or commands is required'
   )
-
-  if command:find('UTCP_ARG_') then
-    command = expand_command(command, args)
-  else
-    local parts = { command }
-
-    for _, value in ipairs(t.args or self.args or {}) do
-      parts[#parts + 1] = shellquote(
-        encode_arg(value)
-      )
-    end
-
-    if t.pass_args or self.pass_args then
-      for key, value in pairs(args) do
-        parts[#parts + 1] = shellquote('--' .. key)
-        parts[#parts + 1] = shellquote(
-          encode_arg(value)
-        )
-      end
-    end
-
-    command = table.concat(parts, ' ')
-  end
 
   local working_dir =
     t.working_dir
     or self.working_dir
+  local environment = t.env_vars or self.env_vars or {}
+  local outputs = {}
 
-  if working_dir and working_dir ~= '' then
-    command =
-      'cd '
-      .. shellquote(working_dir)
-      .. ' && '
-      .. command
+  for index, entry in ipairs(commands) do
+    local spec = type(entry) == 'table' and entry or {command = entry}
+    local command = assert(spec.command, 'cli commands[' .. index .. '].command is required')
+
+    if command:find('UTCP_ARG_') then
+      command = expand_command(command, args)
+    elseif #commands == 1 then
+      local parts = {command}
+      for _, value in ipairs(t.args or self.args or {}) do
+        parts[#parts + 1] = shellquote(encode_arg(value))
+      end
+      if t.pass_args or self.pass_args then
+        for key, value in pairs(args) do
+          parts[#parts + 1] = shellquote('--' .. key)
+          parts[#parts + 1] = shellquote(encode_arg(value))
+        end
+      end
+      command = table.concat(parts, ' ')
+    end
+
+    local env_parts = {}
+    for key, value in pairs(environment) do
+      assert(tostring(key):match('^[%a_][%w_]*$'), 'invalid CLI environment variable name')
+      env_parts[#env_parts + 1] = tostring(key) .. '=' .. shellquote(value)
+    end
+    table.sort(env_parts)
+    if #env_parts > 0 then command = table.concat(env_parts, ' ') .. ' ' .. command end
+    if working_dir and working_dir ~= '' then
+      command = 'cd ' .. shellquote(working_dir) .. ' && ' .. command
+    end
+    command = command .. ' 2>&1'
+
+    local pipe, pipe_err = io.popen(command, 'r')
+    if not pipe then return nil, pipe_err or 'failed to start CLI command' end
+    local output = pipe:read('*a')
+    local ok, _, code = pipe:close()
+    if not ok or (code and code ~= 0) then return nil, output end
+    if spec.append_to_final_output == true
+        or (spec.append_to_final_output == nil and index == #commands) then
+      outputs[#outputs + 1] = output
+    end
   end
 
-  command = command .. ' 2>&1'
-
-  local pipe, pipe_err = io.popen(command, 'r')
-
-  if not pipe then
-    return nil, pipe_err or 'failed to start CLI command'
-  end
-
-  local output = pipe:read('*a')
-
-  local ok, reason, code = pipe:close()
-
-  if not ok or (code and code ~= 0) then
-    return nil, output
-  end
+  local output = table.concat(outputs)
 
   -- Explicit output_type wins. Otherwise preserve backwards compatibility:
   -- decode JSON when possible and return raw text otherwise.

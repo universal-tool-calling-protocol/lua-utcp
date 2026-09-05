@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run one or all local UTCP example servers."""
 import argparse
+import os
 import pathlib
 import signal
 import subprocess
@@ -15,23 +16,34 @@ SERVERS = {
     "mcp": "mcp_server.py",
     "tcp": "tcp_server.py",
     "udp": "udp_server.py",
+    "websocket": "websocket_server.py",
+    "grpc": "../grpc/server.lua",
 }
 
 ROOT = pathlib.Path(__file__).resolve().parent
 
 
+def command_for(name: str):
+    if name == "grpc":
+        return ["sh", str(ROOT.parent / "grpc" / "run-lua.sh"), str(ROOT / SERVERS[name])]
+    return [sys.executable, str(ROOT / SERVERS[name])]
+
+
 def run_one(name: str) -> int:
-    return subprocess.run([sys.executable, str(ROOT / SERVERS[name])]).returncode
+    return subprocess.run(command_for(name)).returncode
 
 
 def run_all() -> int:
+    names = [name for name in SERVERS if name != "grpc"]
+    if os.environ.get("UTCP_RUN_REALTIME_EXAMPLES") == "1" or os.environ.get("UTCP_RUN_REAL_GRPC") == "1":
+        names.append("grpc")
     processes = [
         subprocess.Popen(
-            [sys.executable, str(ROOT / script)],
+            command_for(name),
             stdout=sys.stdout,
             stderr=sys.stderr,
         )
-        for script in SERVERS.values()
+        for name in names
     ]
 
     stopping = False

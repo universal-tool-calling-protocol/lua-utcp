@@ -6,6 +6,7 @@ local client = utcp.Client.new({
   providers = {
     {
       name = 'calculator',
+      call_template_type = 'test',
       tools = {
         {name = 'add', description = 'Add two numbers', inputs = {type='object'}, tool_call_template = {call_template_type='test'}},
         {name = 'mul', description = 'Multiply two numbers', inputs = {type='object'}, tool_call_template = {call_template_type='test'}},

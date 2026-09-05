@@ -75,8 +75,7 @@ local function build_environment(client, opts, logs)
 
   for _, tool in ipairs(tools) do
     local tool_name = tool.name
-    local _, provider = client:find_tool(tool_name)
-    local interface_name = provider and provider.name and (provider.name .. '.' .. tool_name) or tool_name
+    local interface_name = tool.qualified_name or tool_name
     entries[#entries + 1] = {
       name = tool_name,
       interface_name = interface_name,
@@ -104,7 +103,7 @@ local function build_environment(client, opts, logs)
   end
 
   local function search_tools(query, tags)
-    return client:search_tools(query, tags)
+    return client:search_tools(query, 10, tags)
   end
 
   local function get_tool_interface(name)
@@ -178,7 +177,7 @@ function M.new(client, opts)
   end
 
   function api.search_tools(query, tags)
-    return client:search_tools(query, tags)
+    return client:search_tools(query, 10, tags)
   end
 
   function api.get_tool_interface(name)

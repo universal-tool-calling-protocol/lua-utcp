@@ -7,8 +7,9 @@ LUAROCKS_LUA_PATH := $(shell luarocks $(LUAROCKS_PATH_ARGS) path --lr-path 2>/de
 LUA_PATH := ./lua/?.lua;./lua/?/init.lua;$(LUAROCKS_LUA_PATH);;
 export LUA_PATH
 
-.PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp \
+.PHONY: test examples examples-local integration check zip servers server-http server-sse server-streamable server-tcp server-udp server-graphql server-mcp server-websocket server-grpc \
  example-http example-sse example-streamable example-tcp example-udp example-guard example-hol-guard example-auth-metadata example-auth-http \
+ example-websocket example-grpc example-webrtc \
  benchmark \
  example-graphql example-mcp example-cli example-text example-codemode example-provider-flow example-provider-codemode \
  example-openrouter-codemode example-openrouter-codemode-chat example-openrouter-codemode-repair
@@ -24,6 +25,8 @@ test:
 	$(LUA) tests/test_transports.lua
 	$(LUA) tests/test_cli.lua
 	$(LUA) tests/test_hol_guard.lua
+	$(LUA) tests/test_utcp_1_1.lua
+	$(LUA) tests/test_realtime_transports.lua
 
 examples-local:
 	$(LUA) examples/manual.lua
@@ -54,6 +57,12 @@ example-graphql:
 	$(LUA) examples/graphql.lua
 example-mcp:
 	$(LUA) examples/mcp.lua
+example-websocket:
+	$(LUA) examples/websocket.lua
+example-grpc:
+	sh examples/grpc/run-lua.sh examples/grpc/client.lua
+example-webrtc:
+	$(LUA) examples/webrtc.lua
 example-cli:
 	$(LUA) examples/cli.lua
 example-text:
@@ -86,7 +95,7 @@ benchmark:
 	$(LUA) benchmarks/transport_cache.lua
 
 zip:
-	zip -qr lua-utcp.zip lua lua-utcp-1.4-1.rockspec lua-utcp-1.4-1.src.rock README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
+	zip -qr lua-utcp.zip lua lua-utcp-1.8-1.rockspec README.md Makefile tests examples spec LICENSE NOTICE.md CHANGELOG.md
 
 example-provider-test:
 	$(LUA) tests/test_provider_json.lua
@@ -113,3 +122,7 @@ server-graphql:
 	python3 examples/servers/run.py graphql
 server-mcp:
 	python3 examples/servers/run.py mcp
+server-websocket:
+	python3 examples/servers/run.py websocket
+server-grpc:
+	python3 examples/servers/run.py grpc

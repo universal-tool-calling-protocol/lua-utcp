@@ -2,13 +2,9 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local utcp = require('utcp')
 
--- 1. Load the provider declaration from JSON.
-local provider, err = utcp.load_provider('examples/provider.json')
-assert(provider, err)
-
--- 2. Register the provider and its manual in the canonical UTCP registry.
-local client = utcp.Client.new()
-assert(client:add_provider(provider))
+-- 1. Load both manual declarations from one UTCP 1.1 config file.
+local client, err = utcp.Client.new('examples/provider.json')
+assert(client, err)
 
 -- 3. CodeMode exposes a controlled codemode.call_tool(tool_name, args) API.
 local codemode = utcp.codemode.new(client)

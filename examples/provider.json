@@ -1,11 +1,17 @@
 {
-  "name": "calculator",
-  "call_template_type": "http",
-  "url": "http://127.0.0.1:8080",
-  "manual": {
-    "manual_version": "1.0",
-    "utcp_version": "1.0",
-    "tools": [
+  "manual_call_templates": [
+    {
+      "name": "calculator",
+      "call_template_type": "http",
+      "url": "http://127.0.0.1:8080",
+      "manual": {
+        "manual_version": "1.0",
+        "utcp_version": "1.1.0",
+        "info": {
+          "title": "Calculator",
+          "version": "1.0.0"
+        },
+        "tools": [
       {
         "name": "add",
         "description": "Add two numbers.",
@@ -51,9 +57,23 @@
           "http_method": "POST",
           "body_fields": { "a": "{a}", "b": "{b}" }
         }
-      },
+      }
+        ]
+      }
+    },
+    {
+      "name": "filesystem",
+      "call_template_type": "cli",
+      "manual": {
+        "manual_version": "1.0",
+        "utcp_version": "1.1.0",
+        "info": {
+          "title": "Filesystem",
+          "version": "1.0.0"
+        },
+        "tools": [
       {
-        "name": "filesystem.read",
+        "name": "read",
         "description": "Read an existing file from the workspace without modifying it.",
         "inputs": {
           "type": "object",
@@ -80,7 +100,7 @@
         }
       },
       {
-        "name": "filesystem.write",
+        "name": "write",
         "description": "Create a new file in the workspace. Do not use this tool to modify an existing file.",
         "inputs": {
           "type": "object",
@@ -150,7 +170,7 @@
         }
       },
       {
-        "name": "filesystem.patch",
+        "name": "patch",
         "description": "Apply a unified diff patch to existing files in the workspace.",
         "inputs": {
           "type": "object",
@@ -176,6 +196,8 @@
           "output_type": "text"
         }
       }
-    ]
-  }
+        ]
+      }
+    }
+  ]
 }

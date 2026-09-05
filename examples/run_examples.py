@@ -17,6 +17,7 @@ PORTS = [
     ("MCP", "127.0.0.1", 8093, "tcp"),
     ("TCP", "127.0.0.1", 9000, "tcp"),
     ("UDP", "127.0.0.1", 9001, "udp"),
+    ("WebSocket", "127.0.0.1", 8765, "tcp"),
 ]
 
 EXAMPLES = [
@@ -35,7 +36,20 @@ EXAMPLES = [
     "examples/udp.lua",
     "examples/graphql.lua",
     "examples/mcp.lua",
+    "examples/websocket.lua",
+    "examples/grpc/client.lua",
+    "examples/webrtc.lua",
 ]
+
+REALTIME_EXAMPLES = {
+    "examples/websocket.lua": "UTCP_RUN_REAL_WEBSOCKET",
+    "examples/grpc/client.lua": "UTCP_RUN_REAL_GRPC",
+    "examples/webrtc.lua": "UTCP_RUN_REAL_WEBRTC",
+}
+
+
+def realtime_enabled(relative, env):
+    return env.get("UTCP_RUN_REALTIME_EXAMPLES") == "1" or env.get(REALTIME_EXAMPLES[relative]) == "1"
 
 
 def server_is_ready(host, port, protocol):
@@ -53,9 +67,9 @@ def server_is_ready(host, port, protocol):
         return True
 
 
-def wait_for_ports(timeout=10.0):
+def wait_for_ports(ports, timeout=10.0):
     deadline = time.monotonic() + timeout
-    pending = list(PORTS)
+    pending = list(ports)
     while pending and time.monotonic() < deadline:
         remaining = []
         for name, host, port, protocol in pending:
@@ -73,16 +87,25 @@ def wait_for_ports(timeout=10.0):
 
 def main():
     lua = sys.argv[1] if len(sys.argv) > 1 else "lua"
-    server = subprocess.Popen([sys.executable, str(SERVERS), "all"])
+    env = dict(__import__("os").environ)
+    ports = list(PORTS)
+    if env.get("UTCP_RUN_REALTIME_EXAMPLES") == "1" or env.get("UTCP_RUN_REAL_GRPC") == "1":
+        ports.append(("gRPC", "127.0.0.1", 50051, "tcp"))
+    server = subprocess.Popen([sys.executable, str(SERVERS), "all"], env=env)
     try:
         print("Starting local UTCP servers...")
-        wait_for_ports()
+        wait_for_ports(ports)
         print("All UTCP servers are ready. Running examples...\n")
-        env = dict(__import__("os").environ)
         env["LUA_PATH"] = f"{ROOT / 'lua' / '?.lua'};{ROOT / 'lua' / '?/init.lua'};;"
         for relative in EXAMPLES:
             print(f"=== {relative} ===")
-            completed = subprocess.run([lua, str(ROOT / relative)], cwd=ROOT, env=env)
+            example_env = env.copy()
+            if relative in REALTIME_EXAMPLES and not realtime_enabled(relative, env):
+                example_env["UTCP_EXAMPLE_SMOKE"] = "1"
+            command = [lua, str(ROOT / relative)]
+            if relative == "examples/grpc/client.lua" and realtime_enabled(relative, env):
+                command = ["sh", str(ROOT / "examples" / "grpc" / "run-lua.sh"), str(ROOT / relative)]
+            completed = subprocess.run(command, cwd=ROOT, env=example_env)
             if completed.returncode != 0:
                 return completed.returncode
             print()

@@ -58,6 +58,35 @@ function M.render_value(value, args)
   return value
 end
 
+-- The protocol plugins use UTCP_ARG_name_UTCP_END (and the older
+-- UTCP_ARG_name_UTCP_ARG spelling) where braces would be ambiguous.
+function M.render_utcp(value, args)
+  args = args or {}
+  if type(value) == 'string' then
+    local key = value:match('^UTCP_ARG_([%a_][%w_%.%-]*)_UTCP_END$')
+      or value:match('^UTCP_ARG_([%a_][%w_%.%-]*)_UTCP_ARG$')
+    if key then
+      local resolved = lookup(args, key)
+      if resolved ~= nil then return resolved end
+    end
+
+    local rendered = value:gsub(
+      'UTCP_ARG_([%a_][%w_%.%-]*)_UTCP_END',
+      function(name) return tostring_safe(lookup(args, name)) end
+    )
+    return rendered:gsub(
+      'UTCP_ARG_([%a_][%w_%.%-]*)_UTCP_ARG',
+      function(name) return tostring_safe(lookup(args, name)) end
+    )
+  end
+  if type(value) == 'table' then
+    local out = {}
+    for key, item in pairs(value) do out[key] = M.render_utcp(item, args) end
+    return out
+  end
+  return value
+end
+
 function M.query(args)
   local out = {}
   for k,v in pairs(args or {}) do

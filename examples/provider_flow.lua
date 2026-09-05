@@ -2,12 +2,10 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 
 local utcp = require('utcp')
 
-local provider, err = utcp.load_provider('examples/provider.json')
-assert(provider, err)
+local client, err = utcp.Client.new('examples/provider.json')
+assert(client, err)
 
-local client = utcp.Client.new({ providers = { provider } })
-
-print('provider:', provider.name)
+print('manuals: calculator, filesystem')
 print('registered tools:')
 for _, tool in ipairs(client:list_tools()) do
   print('  -', tool.name, '-', tool.description)

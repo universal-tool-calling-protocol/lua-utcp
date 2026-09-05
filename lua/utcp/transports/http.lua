@@ -4,6 +4,24 @@ local auth = require('utcp.auth')
 local M = {}; local T = {}; T.__index = T
 local cached_http, cached_ltn12, socket_error
 
+local function url_encode(value)
+  return tostring(value):gsub('[^%w%-_%.~]', function(char)
+    return string.format('%%%02X', string.byte(char))
+  end)
+end
+
+local function add_query(url, values)
+  local parts = {}
+  for key, value in pairs(values or {}) do
+    if type(value) ~= 'table' then
+      parts[#parts + 1] = url_encode(key) .. '=' .. url_encode(value)
+    end
+  end
+  table.sort(parts)
+  if #parts == 0 then return url end
+  return url .. (url:find('%?') and '&' or '?') .. table.concat(parts, '&')
+end
+
 local function socket_http()
   if cached_http then return cached_http, cached_ltn12 end
   if socket_error then return nil, socket_error end
@@ -82,7 +100,8 @@ function T:request(method, url, body, headers)
 end
 
 function T:call(template_cfg, args)
-  local url = template.render(template_cfg.url or self.url, args)
+  local raw_url = template_cfg.url or self.url
+  local url = template.render(raw_url, args)
   local method = (template_cfg.http_method or template_cfg.method or self.method or 'POST'):upper()
 
   local headers = {}
@@ -91,23 +110,36 @@ function T:call(template_cfg, args)
   end
 
   local body = template_cfg.body
+  if body == nil and template_cfg.body_field then body = args[template_cfg.body_field] end
   if body == nil and method ~= 'GET' and method ~= 'HEAD' then
     body = template_cfg.body_fields or args
   end
 
   body = template.render_value(body, args)
 
-  if method == 'GET' or method == 'DELETE' then
+  if method == 'GET' or method == 'DELETE' or method == 'HEAD' then
     local q = template_cfg.query_params or template_cfg.query
     if q then
-      local parts = {}
+      local rendered = {}
       for k, v in pairs(q) do
-        parts[#parts + 1] = k..'='..template.render(v, args)
+        rendered[k] = template.render(v, args)
       end
-      if #parts > 0 then
-        url = url..(url:find('%?') and '&' or '?')..table.concat(parts, '&')
+      url = add_query(url, rendered)
+    else
+      local unused = {}
+      for key, value in pairs(args or {}) do
+        local marker = '{' .. tostring(key) .. '}'
+        local used = type(raw_url) == 'string' and raw_url:find(marker, 1, true)
+        if not used then unused[key] = value end
       end
+      url = add_query(url, unused)
     end
+  end
+
+  local request_auth = template_cfg.auth or self.auth
+  if request_auth and (request_auth.auth_type or request_auth.type) == 'api_key'
+      and request_auth.location == 'query' and request_auth.api_key ~= nil then
+    url = add_query(url, {[request_auth.var_name or 'api_key'] = request_auth.api_key})
   end
 
   return self:request(method, url, body, headers)

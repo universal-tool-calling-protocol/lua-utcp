@@ -39,16 +39,14 @@ end
 -- Load UTCP provider.
 --
 
-local provider, err = utcp.load_provider('examples/provider.json')
-assert(provider, err)
+local config, err = utcp.load_config('examples/provider.json')
+assert(config, err)
 
 --
 -- Create canonical UTCP client.
 --
 
-local client = utcp.Client.new()
-
-assert(client:add_provider(provider))
+local client = assert(utcp.Client.new(config))
 
 --
 -- Create CodeMode runtime.
@@ -66,7 +64,7 @@ local catalog = {}
 
 for _, tool in ipairs(codemode:list_tools()) do
   catalog[#catalog + 1] = {
-    name = provider.name .. '.' .. tool.name,
+    name = tool.qualified_name or tool.name,
     description = tool.description,
     inputs = tool.inputs or tool.input_schema,
     outputs = tool.outputs or tool.output_schema,

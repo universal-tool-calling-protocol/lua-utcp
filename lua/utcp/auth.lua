@@ -61,18 +61,20 @@ function M.apply(headers, auth)
   auth = auth or {}
 
   local kind = auth_type(auth)
-  if kind == 'bearer' then
+  if kind == 'bearer' and auth.token then
     headers['Authorization'] = 'Bearer '..auth.token
   elseif kind == 'oauth2' and (auth.token or auth.access_token) then
     -- Token lifecycle management is deliberately outside UTCP.  When an
     -- application has obtained a token, send it using the OAuth2 bearer
     -- convention while preserving the metadata for the caller to inspect.
     headers['Authorization'] = 'Bearer '..(auth.token or auth.access_token)
-  elseif kind == 'basic' then
+  elseif kind == 'basic' and auth.username ~= nil and auth.password ~= nil then
     local b = require('mime').b64(auth.username..':'..auth.password)
     headers['Authorization'] = 'Basic '..b
-  elseif kind == 'api_key' then
+  elseif kind == 'api_key' and (auth.location == nil or auth.location == 'header') then
     headers[auth.header or auth.var_name or 'X-API-Key'] = auth.api_key
+  elseif kind == 'api_key' and auth.location == 'cookie' then
+    headers['Cookie'] = (auth.var_name or 'api_key') .. '=' .. tostring(auth.api_key)
   elseif kind == 'header' then
     headers[auth.name] = auth.value
   end

@@ -14,7 +14,7 @@ package.path = './lua/?.lua;./lua/?/init.lua;' .. package.path
 --   OpenRouter refactors that exact text
 --       ↓
 --   call_tool_chain
---       ├── diff.unified
+--       ├── filesystem.diff.unified
 --       └── filesystem.patch
 --
 -- The important property is that OpenRouter receives the ACTUAL README
@@ -38,16 +38,16 @@ local function assert_ok(value, message)
   return value
 end
 
-local function load_provider(path)
-  local provider, err =
-    utcp.load_provider(path)
+local function load_config(path)
+  local config, err =
+    utcp.load_config(path)
 
   assert(
-    provider,
+    config,
     err
   )
 
-  return provider
+  return config
 end
 
 local function json_decode(value)
@@ -313,13 +313,13 @@ end
 local client =
   utcp.Client.new()
 
-local provider =
-  load_provider(
+local config =
+  load_config(
     'examples/provider.json'
   )
 
 assert(
-  client:add_provider(provider)
+  client:add_provider(config)
 )
 
 --
@@ -341,7 +341,7 @@ local catalog = {}
 
 for _, tool in ipairs(tools) do
   catalog[#catalog + 1] = {
-    name = tool.name,
+    name = tool.qualified_name or tool.name,
     description = tool.description,
     inputs =
       tool.inputs
@@ -359,7 +359,7 @@ require_tool(
 
 require_tool(
   catalog,
-  'diff.unified'
+  'filesystem.diff.unified'
 )
 
 require_tool(
@@ -626,7 +626,7 @@ print(
 --
 -- ============================================================
 -- STEP 4
--- diff.unified → filesystem.patch
+-- filesystem.diff.unified → filesystem.patch
 -- ============================================================
 --
 -- One call_tool_chain replaces two separate call_tool calls.
@@ -636,7 +636,7 @@ print(
 --
 -- Therefore:
 --
---   diff.unified
+--   filesystem.diff.unified
 --          ↓
 --       $previous
 --          ↓
@@ -645,13 +645,13 @@ print(
 
 print('')
 print(
-  '--- diff.unified → filesystem.patch chain ---'
+  '--- filesystem.diff.unified → filesystem.patch chain ---'
 )
 
 local chain_result, chain_error =
   client:call_tool_chain({
     {
-      name = 'diff.unified',
+      name = 'filesystem.diff.unified',
       args = {
         original = original_content,
         replacement = replacement,

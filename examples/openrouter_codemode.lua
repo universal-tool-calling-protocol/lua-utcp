@@ -21,11 +21,10 @@ local function strip_code_fence(source)
   return source
 end
 
-local provider, err = utcp.load_provider('examples/provider.json')
-assert(provider, err)
+local config, err = utcp.load_config('examples/provider.json')
+assert(config, err)
 
-local client = utcp.Client.new()
-assert(client:add_provider(provider))
+local client = assert(utcp.Client.new(config))
 
 local codemode = utcp.codemode.new(client)
 local tools = assert(codemode:list_tools())
@@ -33,7 +32,7 @@ local tools = assert(codemode:list_tools())
 local tool_catalog = {}
 for _, tool in ipairs(tools) do
   tool_catalog[#tool_catalog + 1] = {
-    name = provider.name .. '.' .. tool.name,
+    name = tool.qualified_name or tool.name,
     description = tool.description,
     inputs = tool.inputs or tool.input_schema,
     outputs = tool.outputs or tool.output_schema,

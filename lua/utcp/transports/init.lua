@@ -8,4 +8,7 @@ return {
   text = require('utcp.transports.text'),
   graphql = require('utcp.transports.graphql'),
   mcp = require('utcp.transports.mcp'),
+  websocket = require('utcp.transports.websocket'),
+  grpc = require('utcp.transports.grpc'),
+  webrtc = require('utcp.transports.webrtc'),
 }
